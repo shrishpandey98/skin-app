@@ -671,16 +671,13 @@ const styles = StyleSheet.create({
 
   // Sticky Bottom Bar
   stickyBottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     backgroundColor: colors.surface,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 14,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
