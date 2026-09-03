@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "skin-app",
+    "slug": "skin-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.aura.skinapp",
+      "adaptiveIcon": {
+        "backgroundColor": "#FAF9F6",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "b8f566cb-2bad-40ca-bdb1-165097b45083"
+      }
+    }
+  }
+}
