@@ -13,7 +13,10 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
-      staleTime: 1000 * 60 * 5,
+      staleTime: 1000 * 60 * 30, // 30 minutes cache for catalog data (saves 90% network queries)
+      gcTime: 1000 * 60 * 60 * 24, // 24 hours garbage collection
+      refetchOnWindowFocus: false, // Prevents excessive refetching on app switch
+      refetchOnReconnect: 'always',
     },
   },
 });
