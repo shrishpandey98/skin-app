@@ -9,6 +9,11 @@ import {
   StatusBar,
   Linking,
   Alert,
+  Switch,
+  Modal,
+  TextInput,
+  ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import {
@@ -28,8 +33,9 @@ import {
   CheckCircle2,
   X,
   Plus,
+  AlertTriangle,
+  Radio,
 } from 'lucide-react-native';
-import { Modal, TextInput, ActivityIndicator } from 'react-native';
 import { useDoctorStore } from '../../stores/doctor.store';
 import { colors, borderRadius, typography, shadows } from '../../constants/theme';
 
@@ -39,6 +45,8 @@ export const DoctorSettingsScreen: React.FC = () => {
     activeClinic,
     clinicDoctors,
     doctorUser,
+    isClinicPublished,
+    toggleClinicPublish,
     doctorLogout,
     setDoctorMode,
     addDoctorToClinic,
@@ -56,6 +64,40 @@ export const DoctorSettingsScreen: React.FC = () => {
   const handleSwitchToCustomer = () => {
     setDoctorMode(false);
     navigation.navigate('MainTabs');
+  };
+
+  const handleTogglePublish = (nextVal: boolean) => {
+    if (nextVal) {
+      Alert.alert(
+        'Publish Clinic to Customer App?',
+        'Your clinic, doctors team, and procedure pricing will become immediately live and discoverable for customers across Chandigarh Tricity for in-clinic booking.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Publish & Make Live',
+            style: 'default',
+            onPress: async () => {
+              await toggleClinicPublish(true);
+            },
+          },
+        ]
+      );
+    } else {
+      Alert.alert(
+        'Take Clinic Offline?',
+        'Your clinic will be hidden from customer search, directory, and procedure listings. Existing appointments will remain unaffected.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Take Offline',
+            style: 'destructive',
+            onPress: async () => {
+              await toggleClinicPublish(false);
+            },
+          },
+        ]
+      );
+    }
   };
 
   const handleLogout = () => {
@@ -137,6 +179,81 @@ export const DoctorSettingsScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Marketplace Discovery Toggle Card */}
+        <View
+          style={[
+            styles.publishCard,
+            isClinicPublished ? styles.publishCardActive : styles.publishCardInactive,
+            shadows.card,
+          ]}
+        >
+          <View style={styles.publishHeaderRow}>
+            <View style={styles.publishLeftCol}>
+              <View style={styles.publishTitleRow}>
+                <View
+                  style={[
+                    styles.statusDot,
+                    isClinicPublished ? styles.statusDotLive : styles.statusDotOff,
+                  ]}
+                />
+                <Text style={styles.publishTitle}>Show on Customer App</Text>
+                <View
+                  style={[
+                    styles.publishStatusPill,
+                    isClinicPublished ? styles.pillLive : styles.pillOff,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.publishStatusText,
+                      isClinicPublished ? styles.textLive : styles.textOff,
+                    ]}
+                  >
+                    {isClinicPublished ? 'LIVE' : 'OFF (DRAFT)'}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.publishSubtitle}>
+                {isClinicPublished
+                  ? 'Your clinic is discoverable to customers across Chandigarh.'
+                  : 'Your clinic is hidden from customer marketplace.'}
+              </Text>
+            </View>
+
+            <Switch
+              value={isClinicPublished}
+              onValueChange={handleTogglePublish}
+              trackColor={{ false: '#D1D5DB', true: '#2E7D32' }}
+              thumbColor="#FFFFFF"
+              ios_backgroundColor="#D1D5DB"
+            />
+          </View>
+
+          {/* Mandatory Pre-Discovery Verification Note */}
+          <View
+            style={[
+              styles.publishNoteBox,
+              isClinicPublished ? styles.publishNoteBoxLive : styles.publishNoteBoxWarn,
+            ]}
+          >
+            <AlertTriangle
+              size={15}
+              color={isClinicPublished ? '#2E7D32' : '#D97706'}
+              style={styles.publishNoteIcon}
+            />
+            <Text
+              style={[
+                styles.publishNoteText,
+                isClinicPublished ? styles.publishNoteTextLive : styles.publishNoteTextWarn,
+              ]}
+            >
+              {isClinicPublished
+                ? 'Your clinic profile, doctors team, and procedure pricing are live on the customer marketplace.'
+                : 'Please add all clinic details (Profile info, Operating Hours, Doctors Team roster, and Procedure Pricing) before making your clinic discoverable to customers.'}
+            </Text>
+          </View>
+        </View>
+
         {/* Logged in Account Banner */}
         {doctorUser ? (
           <View style={[styles.accountBanner, shadows.subtle]}>
@@ -436,6 +553,113 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 40,
     gap: 14,
+  },
+
+  // Publish Toggle Card
+  publishCard: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: 16,
+    borderWidth: 1.5,
+  },
+  publishCardActive: {
+    borderColor: '#86EFAC',
+    backgroundColor: '#F0FDF4',
+  },
+  publishCardInactive: {
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  publishHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  publishLeftCol: {
+    flex: 1,
+  },
+  publishTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  statusDotLive: {
+    backgroundColor: '#16A34A',
+  },
+  statusDotOff: {
+    backgroundColor: '#9CA3AF',
+  },
+  publishTitle: {
+    fontSize: typography.fontSizes.bodyLarge - 1,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.text,
+  },
+  publishStatusPill: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: borderRadius.pill,
+  },
+  pillLive: {
+    backgroundColor: '#DCFCE7',
+  },
+  pillOff: {
+    backgroundColor: '#F3F4F6',
+  },
+  publishStatusText: {
+    fontSize: 9,
+    fontWeight: typography.fontWeights.heavy,
+    letterSpacing: 0.5,
+  },
+  textLive: {
+    color: '#15803D',
+  },
+  textOff: {
+    color: colors.textMuted,
+  },
+  publishSubtitle: {
+    fontSize: typography.fontSizes.caption - 1,
+    color: colors.textSecondary,
+    lineHeight: 16,
+  },
+
+  // Note Box
+  publishNoteBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    padding: 12,
+    borderRadius: borderRadius.md,
+    marginTop: 12,
+    borderWidth: 1,
+  },
+  publishNoteBoxLive: {
+    backgroundColor: '#DCFCE7',
+    borderColor: '#BBF7D0',
+  },
+  publishNoteBoxWarn: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+  },
+  publishNoteIcon: {
+    marginTop: 1,
+  },
+  publishNoteText: {
+    flex: 1,
+    fontSize: typography.fontSizes.micro + 0.5,
+    lineHeight: 16,
+  },
+  publishNoteTextLive: {
+    color: '#14532D',
+  },
+  publishNoteTextWarn: {
+    color: '#92400E',
   },
 
   // Account Banner

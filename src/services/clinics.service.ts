@@ -14,7 +14,7 @@ export interface ClinicFilters {
 export const clinicsService = {
   getAllClinics: async (filters?: ClinicFilters): Promise<Clinic[]> => {
     await new Promise((r) => setTimeout(r, 100));
-    let results = [...MOCK_CLINICS];
+    let results = MOCK_CLINICS.filter((c) => c.isActive !== false);
 
     if (filters?.area) {
       results = results.filter((c) => c.area.toLowerCase().includes(filters.area!.toLowerCase()));

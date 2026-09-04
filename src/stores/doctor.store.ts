@@ -32,6 +32,7 @@ interface DoctorState {
   patients: PatientSummary[];
   isDoctorMode: boolean;
   isDoctorAuthenticated: boolean;
+  isClinicPublished: boolean;
   doctorUser: ClinicUserProfile | null;
   loading: boolean;
   error: string | null;
@@ -39,6 +40,7 @@ interface DoctorState {
   // Actions
   initializeDoctorPortal: () => Promise<void>;
   initializeDoctorAuth: () => Promise<void>;
+  toggleClinicPublish: (publish: boolean) => Promise<void>;
   loginDoctorWithCredentials: (
     email: string,
     password: string,
@@ -66,22 +68,23 @@ interface DoctorState {
 }
 
 const STORAGE_KEY_DOCTOR = '@aura_doctor_session';
+const STORAGE_KEY_PUBLISHED = '@aura_clinic_published_state';
 
 const DEFAULT_CLINIC: Clinic = {
   id: 'clinic_aura_partner',
-  name: 'Clinic Partner Dashboard',
-  slug: 'clinic-partner',
-  description: 'Aesthetic dermatology & laser center.',
-  logoUrl: '',
-  coverImageUrl: '',
-  phone: '+91 98765 43210',
-  email: 'partner@aura.app',
-  address: 'Chandigarh Tricity',
-  area: 'Chandigarh',
-  city: 'Chandigarh',
-  state: 'Chandigarh',
-  latitude: 30.7333,
-  longitude: 76.7794,
+  name: "Dr. Purva's Skin & Laser Clinic",
+  slug: 'dr-purvas-skin-and-laser-clinic',
+  description: 'Specialist aesthetic dermatology, laser center & hair restoration.',
+  logoUrl: 'https://drpurvaskinclinic.com/media/uploads/site_setting/117503311.png',
+  coverImageUrl: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?q=80&w=1200&auto=format&fit=crop',
+  phone: '+91 94176 96148',
+  email: 'drpurvapande@gmail.com',
+  address: 'Plot No. 1187, Sector 11, Panchkula (Chandigarh Tricity)',
+  area: 'Sector 11 (Panchkula)',
+  city: 'Chandigarh / Panchkula',
+  state: 'Haryana',
+  latitude: 30.6890,
+  longitude: 76.8534,
   openingHours: {
     monday: { open: '10:00 AM', close: '07:00 PM' },
     tuesday: { open: '10:00 AM', close: '07:00 PM' },
@@ -92,26 +95,29 @@ const DEFAULT_CLINIC: Clinic = {
     sunday: { open: 'Closed', close: 'Closed', isClosed: true },
   },
   verificationStatus: 'verified',
-  rating: 5.0,
-  reviewCount: 0,
-  specialties: ['Dermatology', 'Laser', 'Aesthetics'],
-  galleryImages: [],
-  isActive: true,
+  rating: 4.9,
+  reviewCount: 310,
+  specialties: ['Laser Hair Removal', 'Hydrafacial MD', 'Botox & Fillers', 'Acne Scars', 'PRP Hair Therapy'],
+  galleryImages: [
+    'https://images.unsplash.com/photo-1629909613654-28e377c37b09?q=80&w=800&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?q=80&w=800&auto=format&fit=crop',
+  ],
+  isActive: false, // Default: OFF
   procedures: [],
   doctors: [],
 };
 
 const DEFAULT_DOCTOR: Doctor = {
   id: 'doc_lead',
-  name: 'Lead Dermatologist',
-  slug: 'lead-dermatologist',
+  name: 'Dr. Purva Pande',
+  slug: 'dr-purva-pande',
   photoUrl: 'https://images.unsplash.com/photo-1594824813686-21a4413158c3?q=80&w=600&auto=format&fit=crop',
-  qualification: 'MBBS, MD Dermatology',
-  specialization: 'Chief Dermatologist',
-  experienceYears: 10,
-  bio: 'Experienced dermatologist and aesthetic practitioner.',
-  rating: 5.0,
-  reviewCount: 0,
+  qualification: 'MBBS, MD (Dermatology), DNB, MNAMS (Ex. GMCH-32, Harvard USA)',
+  specialization: 'Chief Dermatologist & Laser Specialist',
+  experienceYears: 15,
+  bio: 'Dr. Purva is a board-certified senior dermatologist in Chandigarh Tricity specializing in lasers, anti-ageing, and clinical aesthetics.',
+  rating: 4.9,
+  reviewCount: 310,
   isActive: true,
   proceduresOffered: [],
 };
@@ -119,7 +125,7 @@ const DEFAULT_DOCTOR: Doctor = {
 export const useDoctorStore = create<DoctorState>((set, get) => ({
   activeClinic: MOCK_CLINICS[0] || DEFAULT_CLINIC,
   activeDoctor: MOCK_DOCTORS[0] || DEFAULT_DOCTOR,
-  clinicDoctors: MOCK_DOCTORS.length > 0 ? [...MOCK_DOCTORS] : [],
+  clinicDoctors: MOCK_DOCTORS.length > 0 ? [...MOCK_DOCTORS] : [DEFAULT_DOCTOR],
   selectedDoctorFilter: null,
   knowledgeBaseProcedures: [],
   clinicProcedures: MOCK_CLINICS[0]?.procedures || [],
@@ -133,6 +139,7 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
   patients: [],
   isDoctorMode: false,
   isDoctorAuthenticated: false,
+  isClinicPublished: false, // Default OFF
   doctorUser: null,
   loading: false,
   error: null,
@@ -141,12 +148,66 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
     try {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       const stored = await AsyncStorage.getItem(STORAGE_KEY_DOCTOR);
+      const isPub = await AsyncStorage.getItem(STORAGE_KEY_PUBLISHED);
       if (stored) {
         const user = JSON.parse(stored);
         set({ isDoctorAuthenticated: true, doctorUser: user });
       }
+      if (isPub === 'true') {
+        set({ isClinicPublished: true });
+        get().toggleClinicPublish(true);
+      }
     } catch (e) {
       console.warn('Failed to load doctor auth session', e);
+    }
+  },
+
+  toggleClinicPublish: async (publish: boolean) => {
+    const clinic = get().activeClinic;
+    const doctors = get().clinicDoctors;
+    const procedures = get().clinicProcedures;
+
+    const updatedClinic: Clinic = {
+      ...clinic,
+      isActive: publish,
+      doctors,
+      procedures,
+    };
+
+    set({ isClinicPublished: publish, activeClinic: updatedClinic });
+
+    // Sync to MOCK_CLINICS
+    const clinicIdx = MOCK_CLINICS.findIndex((c) => c.id === updatedClinic.id || c.slug === updatedClinic.slug);
+    if (publish) {
+      if (clinicIdx >= 0) {
+        MOCK_CLINICS[clinicIdx] = updatedClinic;
+      } else {
+        MOCK_CLINICS.push(updatedClinic);
+      }
+      // Add doctors to MOCK_DOCTORS
+      doctors.forEach((d) => {
+        if (!MOCK_DOCTORS.some((md) => md.id === d.id)) {
+          MOCK_DOCTORS.push(d);
+        }
+      });
+    } else {
+      if (clinicIdx >= 0) {
+        MOCK_CLINICS.splice(clinicIdx, 1);
+      }
+      // Remove clinic doctors from MOCK_DOCTORS
+      doctors.forEach((d) => {
+        const docIdx = MOCK_DOCTORS.findIndex((md) => md.id === d.id);
+        if (docIdx >= 0) {
+          MOCK_DOCTORS.splice(docIdx, 1);
+        }
+      });
+    }
+
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      await AsyncStorage.setItem(STORAGE_KEY_PUBLISHED, publish ? 'true' : 'false');
+    } catch (e) {
+      console.warn('Failed to persist published state', e);
     }
   },
 
