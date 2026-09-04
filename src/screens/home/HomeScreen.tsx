@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
+  Animated,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import {
@@ -17,20 +18,98 @@ import {
   Zap,
   Wind,
   Shield,
+  Layers,
   Award,
   CheckCircle2,
   ArrowRight,
   HelpCircle,
-  Stethoscope,
+  Activity,
+  HeartHandshake,
 } from 'lucide-react-native';
 import { TopBar } from '../../components/ui/TopBar';
 import { SearchBar } from '../../components/ui/SearchBar';
-import { ProcedureCard } from '../../components/cards/ProcedureCard';
 import { ClinicCard } from '../../components/cards/ClinicCard';
 import { SectionHeader } from '../../components/ui/SectionHeader';
 import { MOCK_PROCEDURES, MOCK_CLINICS } from '../../data/mockData';
 import { colors, borderRadius, typography, shadows } from '../../constants/theme';
 import { analytics } from '../../services/analytics.service';
+import { Procedure } from '../../types/procedure.types';
+
+// Category icon & color mapping for icon-only display
+const PROCEDURE_ICON_MAP: Record<string, { icon: any; color: string; bg: string; benefit: string }> = {
+  hydrafacial: {
+    icon: Sun,
+    color: '#AD904A',
+    bg: '#FAF4E6',
+    benefit: 'Instant Glow • 45 min',
+  },
+  'laser-hair-removal': {
+    icon: Zap,
+    color: '#3E9BAA',
+    bg: '#EAF6F8',
+    benefit: 'Painless • 6-8 sittings',
+  },
+  botox: {
+    icon: Sparkles,
+    color: '#36536B',
+    bg: '#EBF1F5',
+    benefit: 'Wrinkle Smoothing • 15 min',
+  },
+  'prp-hair-treatment': {
+    icon: Wind,
+    color: '#D68C58',
+    bg: '#FDF4ED',
+    benefit: 'Follicle Growth • 4-6 sittings',
+  },
+  'chemical-peel': {
+    icon: Layers,
+    color: '#8A7032',
+    bg: '#FAF4E6',
+    benefit: 'Acne & Tan Clearance • 30 min',
+  },
+  'laser-toning': {
+    icon: Zap,
+    color: '#3E9BAA',
+    bg: '#EAF6F8',
+    benefit: 'Melasma & Brightening • 20 min',
+  },
+  'skin-tightening': {
+    icon: Shield,
+    color: '#AD904A',
+    bg: '#FAF4E6',
+    benefit: 'HIFU Face Lift • Single session',
+  },
+  'dermal-fillers': {
+    icon: Sparkles,
+    color: '#36536B',
+    bg: '#EBF1F5',
+    benefit: 'Volume & Lip Plump • 30 min',
+  },
+  'acne-scar-treatment': {
+    icon: Activity,
+    color: '#36536B',
+    bg: '#EBF1F5',
+    benefit: 'Fractional CO2 • Permanent',
+  },
+  'skin-brightening': {
+    icon: Sun,
+    color: '#AD904A',
+    bg: '#FAF4E6',
+    benefit: 'Medi-Facial Glow • 45 min',
+  },
+  'pigmentation-treatment': {
+    icon: Layers,
+    color: '#D68C58',
+    bg: '#FDF4ED',
+    benefit: 'Dark Spot Fade • 3-5 sittings',
+  },
+  microneedling: {
+    icon: Activity,
+    color: '#3E9BAA',
+    bg: '#EAF6F8',
+    benefit: 'Collagen Renewal • 40 min',
+  },
+};
 
 const PROCEDURE_QUICK_FILTERS = [
   { id: 'all', label: 'All Treatments' },
@@ -45,9 +124,28 @@ export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const [selectedFilter, setSelectedFilter] = React.useState('all');
 
+  // Animation for Highlighting "Not Sure..."
+  const pulseAnim = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
     analytics.track('app_opened');
-  }, []);
+
+    // Continuous breathing / glowing pulse animation for "Not Sure..."
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1600,
+          useNativeDriver: false,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0,
+          duration: 1600,
+          useNativeDriver: false,
+        }),
+      ])
+    ).start();
+  }, [pulseAnim]);
 
   const handleSearchPress = () => {
     navigation.navigate('SearchResultsModal');
@@ -85,6 +183,27 @@ export const HomeScreen: React.FC = () => {
       ? MOCK_PROCEDURES
       : MOCK_PROCEDURES.filter((p) => p.category === selectedFilter);
 
+  // Animated interpolations for the highlighted "Not Sure" box
+  const animatedBorderColor = pulseAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: ['#DEC481', '#997F3E', '#DEC481'],
+  });
+
+  const animatedBgColor = pulseAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: ['#FAF6EE', '#FFF9EC', '#FAF6EE'],
+  });
+
+  const animatedScale = pulseAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [1, 1.018, 1],
+  });
+
+  const animatedBadgeGlow = pulseAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0.85, 1, 0.85],
+  });
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
@@ -111,7 +230,7 @@ export const HomeScreen: React.FC = () => {
         </View>
 
         {/* ─────────────────────────────────────────────────────────────
-            1. COMMON PROCEDURES
+            1. COMMON PROCEDURES (ICON-ONLY, NO PHOTOS)
            ───────────────────────────────────────────────────────────── */}
         <View style={styles.section}>
           <SectionHeader
@@ -120,7 +239,7 @@ export const HomeScreen: React.FC = () => {
             onActionPress={() => handleExploreProcedures()}
           />
 
-          {/* Category Filter Pills */}
+          {/* Quick Filter Pills */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -151,50 +270,106 @@ export const HomeScreen: React.FC = () => {
             })}
           </ScrollView>
 
-          {/* Procedures Carousel */}
+          {/* Icon-Only Procedure Cards Carousel */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.horizontalScroll}
           >
-            {filteredProcedures.slice(0, 6).map((proc) => (
-              <ProcedureCard
-                key={proc.id}
-                procedure={proc}
-                variant="horizontal"
-                onPress={() => handleProcedurePress(proc.slug, proc.name)}
-              />
-            ))}
+            {filteredProcedures.slice(0, 8).map((proc) => {
+              const meta = PROCEDURE_ICON_MAP[proc.slug] || {
+                icon: Sparkles,
+                color: colors.primary,
+                bg: colors.primaryLight,
+                benefit: 'Clinical Dermatology',
+              };
+              const IconComp = meta.icon;
+
+              return (
+                <TouchableOpacity
+                  key={proc.id}
+                  activeOpacity={0.85}
+                  onPress={() => handleProcedurePress(proc.slug, proc.name)}
+                  style={[styles.iconProcCard, shadows.card]}
+                >
+                  {/* Icon Circle */}
+                  <View style={[styles.iconProcCircle, { backgroundColor: meta.bg }]}>
+                    <IconComp size={24} color={meta.color} />
+                  </View>
+
+                  {/* Category Chip */}
+                  <View style={styles.iconProcCatBadge}>
+                    <Text style={styles.iconProcCatText}>
+                      {proc.categoryLabel || proc.category.toUpperCase()}
+                    </Text>
+                  </View>
+
+                  {/* Title */}
+                  <Text style={styles.iconProcTitle} numberOfLines={1}>
+                    {proc.name}
+                  </Text>
+
+                  {/* Benefit / Sessions Info */}
+                  <Text style={styles.iconProcBenefit} numberOfLines={1}>
+                    {meta.benefit}
+                  </Text>
+
+                  {/* Bottom Action */}
+                  <View style={styles.iconProcFooter}>
+                    <Text style={styles.iconProcFooterText}>View Details</Text>
+                    <ChevronRight size={14} color={colors.primary} />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         </View>
 
         {/* ─────────────────────────────────────────────────────────────
-            2. NOT SURE ... (PROMINENTLY HIGHLIGHTED)
+            2. NOT SURE ... (ANIMATED HIGHLIGHT CARD)
            ───────────────────────────────────────────────────────────── */}
         <View style={styles.notSureWrapper}>
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={handleNotSure}
-            style={[styles.notSureCard, shadows.card]}
+          <Animated.View
+            style={[
+              styles.notSureCard,
+              shadows.card,
+              {
+                borderColor: animatedBorderColor,
+                backgroundColor: animatedBgColor,
+                transform: [{ scale: animatedScale }],
+              },
+            ]}
           >
-            {/* Top Accent Tag */}
-            <View style={styles.notSureTag}>
-              <Sparkles size={13} color={colors.primaryDark} />
-              <Text style={styles.notSureTagText}>GUIDED TREATMENT FINDER</Text>
-            </View>
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={handleNotSure}
+            >
+              {/* Animated Glowing Tag */}
+              <Animated.View
+                style={[
+                  styles.notSureTag,
+                  {
+                    opacity: animatedBadgeGlow,
+                  },
+                ]}
+              >
+                <Sparkles size={13} color={colors.primaryDark} />
+                <Text style={styles.notSureTagText}>GUIDED TREATMENT FINDER</Text>
+              </Animated.View>
 
-            {/* Headline & Description */}
-            <Text style={styles.notSureTitle}>Not sure what your skin needs?</Text>
-            <Text style={styles.notSureDescription}>
-              Answer 3 simple questions about your concerns to get matched with doctor-recommended treatments and direct pricing.
-            </Text>
+              {/* Headline & Description */}
+              <Text style={styles.notSureTitle}>Not sure what your skin needs?</Text>
+              <Text style={styles.notSureDescription}>
+                Answer 3 simple questions about your concerns to get matched with doctor-recommended treatments and direct pricing.
+              </Text>
 
-            {/* Highlighted CTA Button */}
-            <View style={styles.notSureCta}>
-              <Text style={styles.notSureCtaText}>Start 30-Sec Assessment</Text>
-              <ArrowRight size={16} color={colors.textInverse} />
-            </View>
-          </TouchableOpacity>
+              {/* Highlighted CTA Button */}
+              <View style={styles.notSureCta}>
+                <Text style={styles.notSureCtaText}>Start 30-Sec Assessment</Text>
+                <ArrowRight size={16} color={colors.textInverse} />
+              </View>
+            </TouchableOpacity>
+          </Animated.View>
         </View>
 
         {/* ─────────────────────────────────────────────────────────────
@@ -222,7 +397,7 @@ export const HomeScreen: React.FC = () => {
           </ScrollView>
         </View>
 
-        {/* Trust & Safety Strip */}
+        {/* Trust & Safety Reassurance */}
         <View style={styles.trustStrip}>
           <View style={styles.trustItem}>
             <CheckCircle2 size={15} color={colors.primary} />
@@ -320,19 +495,79 @@ const styles = StyleSheet.create({
   },
 
   // ─────────────────────────────────────────────────────────────
-  // 2. NOT SURE ... (PROMINENT HIGHLIGHT CARD)
+  // 1. ICON-ONLY PROCEDURE CARDS
+  // ─────────────────────────────────────────────────────────────
+  iconProcCard: {
+    width: 175,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: 14,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    justifyContent: 'space-between',
+  },
+  iconProcCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  iconProcCatBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.surfaceSubtle,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: borderRadius.sm,
+    marginBottom: 6,
+  },
+  iconProcCatText: {
+    fontSize: typography.fontSizes.micro,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  iconProcTitle: {
+    fontSize: typography.fontSizes.body - 0.5,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.text,
+    marginBottom: 4,
+  },
+  iconProcBenefit: {
+    fontSize: typography.fontSizes.micro + 0.5,
+    color: colors.textMuted,
+    lineHeight: 15,
+    marginBottom: 10,
+  },
+  iconProcFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: colors.surfaceSubtle,
+    paddingTop: 8,
+  },
+  iconProcFooterText: {
+    fontSize: typography.fontSizes.caption - 1,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.primary,
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // 2. NOT SURE ... (ANIMATED HIGHLIGHT CARD)
   // ─────────────────────────────────────────────────────────────
   notSureWrapper: {
     paddingHorizontal: 20,
-    marginTop: 22,
-    marginBottom: 4,
+    marginTop: 20,
+    marginBottom: 6,
   },
   notSureCard: {
-    backgroundColor: '#FAF5EA',
     borderRadius: borderRadius.xl,
     padding: 20,
-    borderWidth: 1.5,
-    borderColor: '#DEC481',
+    borderWidth: 2,
   },
   notSureTag: {
     flexDirection: 'row',

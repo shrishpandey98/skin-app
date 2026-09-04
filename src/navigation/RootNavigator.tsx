@@ -1,6 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TabNavigator } from './TabNavigator';
+import { AuthScreen } from '../screens/auth/AuthScreen';
 import { ProcedureDetailScreen } from '../screens/procedures/ProcedureDetailScreen';
 import { ClinicDetailScreen } from '../screens/clinics/ClinicDetailScreen';
 import { DoctorProfileScreen } from '../screens/clinics/DoctorProfileScreen';
@@ -12,14 +13,26 @@ import { NotSureStack } from './NotSureStack';
 import { ProfileStack } from './ProfileStack';
 import { AuthStack } from './AuthStack';
 import { RootStackParamList } from '../types/navigation.types';
+import { useAuthStore } from '../stores/auth.store';
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 
 export const RootNavigator: React.FC = () => {
+  const { hasCompletedAuth } = useAuthStore();
+
   return (
     <RootStack.Navigator screenOptions={{ headerShown: false }}>
-      {/* 3-Tab Core App */}
-      <RootStack.Screen name="MainTabs" component={TabNavigator} />
+      {!hasCompletedAuth ? (
+        /* Authentication Screen Gate (Google SSO / Username-Password / Guest) */
+        <RootStack.Screen
+          name="AuthScreen"
+          component={AuthScreen}
+          options={{ animation: 'fade' }}
+        />
+      ) : (
+        /* 3-Tab Core App */
+        <RootStack.Screen name="MainTabs" component={TabNavigator} />
+      )}
 
       {/* Shared Discovery Screens */}
       <RootStack.Screen

@@ -29,7 +29,7 @@ import { colors, borderRadius, typography, shadows } from '../../constants/theme
 
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const { user, isAuthenticated, logout } = useAuthStore();
+  const { user, isAuthenticated, isGuest, logout } = useAuthStore();
   const { getUpcomingAppointments } = useAppointmentsStore();
 
   const upcomingCount = getUpcomingAppointments().length;
@@ -42,7 +42,6 @@ export const ProfileScreen: React.FC = () => {
         style: 'destructive',
         onPress: () => {
           logout();
-          navigation.goBack();
         },
       },
     ]);
@@ -70,23 +69,42 @@ export const ProfileScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* User Card */}
-        <View style={[styles.userCard, shadows.card]}>
-          <Image
-            source={{
-              uri:
-                user?.profileImageUrl ||
-                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop',
-            }}
-            style={styles.avatar}
-            contentFit="cover"
-          />
-          <View style={styles.userTextCol}>
-            <Text style={styles.userName}>{user?.name || 'Priya Sharma'}</Text>
-            <Text style={styles.userPhone}>{user?.phone || '+91 98765 43210'}</Text>
-            <Text style={styles.userCity}>{user?.city || 'Chandigarh'}, India</Text>
+        {/* User Card (Authenticated vs Guest) */}
+        {isAuthenticated && user ? (
+          <View style={[styles.userCard, shadows.card]}>
+            <Image
+              source={{
+                uri:
+                  user.profileImageUrl ||
+                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop',
+              }}
+              style={styles.avatar}
+              contentFit="cover"
+            />
+            <View style={styles.userTextCol}>
+              <Text style={styles.userName}>{user.name}</Text>
+              <Text style={styles.userPhone}>{user.phone}</Text>
+              <Text style={styles.userCity}>{user.city || 'Chandigarh'}, India</Text>
+            </View>
           </View>
-        </View>
+        ) : (
+          <View style={[styles.guestCard, shadows.card]}>
+            <View style={styles.guestAvatarCircle}>
+              <User size={28} color={colors.primary} />
+            </View>
+            <View style={styles.guestTextCol}>
+              <Text style={styles.guestTitle}>Guest User</Text>
+              <Text style={styles.guestSubtitle}>Sign in to save clinics & track bookings</Text>
+            </View>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={handleLoginPress}
+              style={styles.guestLoginBtn}
+            >
+              <Text style={styles.guestLoginBtnText}>Sign In</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Section 1: Appointments & Saves */}
         <View style={styles.menuGroup}>
@@ -219,6 +237,49 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     marginBottom: 20,
+  },
+  guestCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FAF5EA',
+    padding: 16,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1.5,
+    borderColor: '#DEC481',
+    marginBottom: 20,
+  },
+  guestAvatarCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  guestTextCol: {
+    flex: 1,
+  },
+  guestTitle: {
+    fontSize: typography.fontSizes.body,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.text,
+  },
+  guestSubtitle: {
+    fontSize: typography.fontSizes.caption - 1,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  guestLoginBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: borderRadius.pill,
+  },
+  guestLoginBtnText: {
+    color: colors.textInverse,
+    fontSize: typography.fontSizes.caption,
+    fontWeight: typography.fontWeights.bold,
   },
   avatar: {
     width: 64,

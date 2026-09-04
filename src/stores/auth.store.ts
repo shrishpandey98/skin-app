@@ -4,10 +4,15 @@ import { UserProfile } from '../types/user.types';
 
 interface AuthState {
   isAuthenticated: boolean;
+  isGuest: boolean;
+  hasCompletedAuth: boolean;
   user: UserProfile | null;
   savedClinics: string[];
   savedProcedures: string[];
   login: (phoneOrEmail: string, name?: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+  loginWithCredentials: (usernameOrEmail: string, password: string, name?: string) => Promise<void>;
+  continueAsGuest: () => void;
   logout: () => Promise<void>;
   toggleSaveClinic: (clinicSlug: string) => void;
   toggleSaveProcedure: (procedureSlug: string) => void;
@@ -18,11 +23,14 @@ interface AuthState {
 }
 
 const STORAGE_KEY_USER = '@aura_user_session';
+const STORAGE_KEY_GUEST = '@aura_guest_session';
 const STORAGE_KEY_SAVED_CLINICS = '@aura_saved_clinics';
 const STORAGE_KEY_SAVED_PROCEDURES = '@aura_saved_procedures';
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
+  isGuest: false,
+  hasCompletedAuth: false,
   user: null,
   savedClinics: ['aesthetica-skin-and-laser-clinic'],
   savedProcedures: ['botox', 'hydrafacial'],
@@ -38,18 +46,67 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       profileImageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop',
     };
 
-    set({ isAuthenticated: true, user: newUser });
+    set({ isAuthenticated: true, isGuest: false, hasCompletedAuth: true, user: newUser });
     try {
       await AsyncStorage.setItem(STORAGE_KEY_USER, JSON.stringify(newUser));
+      await AsyncStorage.removeItem(STORAGE_KEY_GUEST);
     } catch (e) {
       console.warn('Failed to persist auth session', e);
     }
   },
 
+  loginWithGoogle: async () => {
+    const googleUser: UserProfile = {
+      id: 'usr_g_' + Date.now(),
+      name: 'Shrish Pandey',
+      email: 'shrish.pandey@gmail.com',
+      phone: '+91 98765 43210',
+      city: 'Chandigarh',
+      profileImageUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=400&auto=format&fit=crop',
+    };
+
+    set({ isAuthenticated: true, isGuest: false, hasCompletedAuth: true, user: googleUser });
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY_USER, JSON.stringify(googleUser));
+      await AsyncStorage.removeItem(STORAGE_KEY_GUEST);
+    } catch (e) {
+      console.warn('Failed to persist Google session', e);
+    }
+  },
+
+  loginWithCredentials: async (usernameOrEmail: string, password: string, name?: string) => {
+    const isEmail = usernameOrEmail.includes('@');
+    const userName = name || (isEmail ? usernameOrEmail.split('@')[0] : usernameOrEmail);
+    const capitalized = userName.charAt(0).toUpperCase() + userName.slice(1);
+
+    const newUser: UserProfile = {
+      id: 'usr_' + Date.now(),
+      name: capitalized,
+      email: isEmail ? usernameOrEmail : `${usernameOrEmail}@aura.app`,
+      phone: '+91 98765 43210',
+      city: 'Chandigarh',
+      profileImageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop',
+    };
+
+    set({ isAuthenticated: true, isGuest: false, hasCompletedAuth: true, user: newUser });
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY_USER, JSON.stringify(newUser));
+      await AsyncStorage.removeItem(STORAGE_KEY_GUEST);
+    } catch (e) {
+      console.warn('Failed to persist credential session', e);
+    }
+  },
+
+  continueAsGuest: () => {
+    set({ isAuthenticated: false, isGuest: true, hasCompletedAuth: true, user: null });
+    AsyncStorage.setItem(STORAGE_KEY_GUEST, 'true').catch(console.warn);
+  },
+
   logout: async () => {
-    set({ isAuthenticated: false, user: null });
+    set({ isAuthenticated: false, isGuest: false, hasCompletedAuth: false, user: null });
     try {
       await AsyncStorage.removeItem(STORAGE_KEY_USER);
+      await AsyncStorage.removeItem(STORAGE_KEY_GUEST);
     } catch (e) {
       console.warn('Failed to clear auth session', e);
     }
@@ -96,12 +153,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   initializeAuth: async () => {
     try {
       const storedUser = await AsyncStorage.getItem(STORAGE_KEY_USER);
+      const isGuest = await AsyncStorage.getItem(STORAGE_KEY_GUEST);
       const storedClinics = await AsyncStorage.getItem(STORAGE_KEY_SAVED_CLINICS);
       const storedProcedures = await AsyncStorage.getItem(STORAGE_KEY_SAVED_PROCEDURES);
 
       if (storedUser) {
-        set({ isAuthenticated: true, user: JSON.parse(storedUser) });
+        set({ isAuthenticated: true, isGuest: false, hasCompletedAuth: true, user: JSON.parse(storedUser) });
+      } else if (isGuest === 'true') {
+        set({ isAuthenticated: false, isGuest: true, hasCompletedAuth: true, user: null });
       }
+
       if (storedClinics) {
         set({ savedClinics: JSON.parse(storedClinics) });
       }

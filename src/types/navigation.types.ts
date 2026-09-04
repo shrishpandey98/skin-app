@@ -106,8 +106,8 @@ export type AuthStackParamList = {
   OtpVerification: { phoneOrEmail: string; isEmail?: boolean; returnScreen?: string; returnParams?: any };
 };
 
-// Root Stack Types (Top-level container)
 export type RootStackParamList = {
+  AuthScreen: undefined;
   MainTabs: NavigatorScreenParams<MainTabParamList>;
   HomeStack: NavigatorScreenParams<HomeStackParamList>;
   ProceduresStack: NavigatorScreenParams<ProceduresStackParamList>;
