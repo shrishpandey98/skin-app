@@ -29,7 +29,9 @@ export const DoctorScheduleScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const {
     activeClinic,
-    activeDoctor,
+    clinicDoctors,
+    selectedDoctorFilter,
+    setSelectedDoctorFilter,
     stats,
     initializeDoctorPortal,
     updateAppointmentStatus,
@@ -46,17 +48,27 @@ export const DoctorScheduleScreen: React.FC = () => {
   const todayStr = new Date().toISOString().split('T')[0];
 
   const displayedAppointments = appointments.filter((apt) => {
-    if (filterMode === 'today') return apt.appointmentDate === todayStr;
-    if (filterMode === 'pending') return apt.status === 'pending';
-    return true; // 'all'
+    // 1. Time / Status filter
+    if (filterMode === 'today' && apt.appointmentDate !== todayStr) return false;
+    if (filterMode === 'pending' && apt.status !== 'pending') return false;
+
+    // 2. Doctor filter (if a specific doctor pill is selected)
+    if (selectedDoctorFilter) {
+      const matchSlug = apt.doctor?.slug === selectedDoctorFilter || apt.doctorId === selectedDoctorFilter;
+      const matchName = apt.doctor?.name?.toLowerCase().includes(selectedDoctorFilter.toLowerCase());
+      if (!matchSlug && !matchName) return false;
+    }
+
+    return true;
   });
 
   const handleConfirm = async (aptId: string, apt: Appointment) => {
     await updateAppointmentStatus(aptId, 'confirmed');
     if (apt.patientPhone) {
+      const docName = apt.doctor?.name || 'our specialist';
       openWhatsAppChat(
         apt.patientPhone,
-        `Hello ${apt.patientName}, your appointment on ${apt.appointmentDate} at ${apt.appointmentTime} is CONFIRMED with ${activeDoctor.name} at ${activeClinic.name}.`
+        `Hello ${apt.patientName}, your appointment on ${apt.appointmentDate} at ${apt.appointmentTime} is CONFIRMED with ${docName} at ${activeClinic.name}.`
       );
     }
   };
@@ -77,7 +89,7 @@ export const DoctorScheduleScreen: React.FC = () => {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text style={styles.clinicNameText}>{activeClinic.name}</Text>
-          <Text style={styles.headerTitle}>Doctor Appointments</Text>
+          <Text style={styles.headerTitle}>Clinic Queue</Text>
         </View>
 
         <TouchableOpacity
@@ -98,7 +110,59 @@ export const DoctorScheduleScreen: React.FC = () => {
           <RefreshControl refreshing={loading} onRefresh={initializeDoctorPortal} />
         }
       >
-        {/* Minimal 3-Pill Filter Bar */}
+        {/* Doctor Filter Pill Selector */}
+        <View style={styles.doctorFilterSection}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.doctorFilterScroll}
+          >
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setSelectedDoctorFilter(null)}
+              style={[
+                styles.docFilterPill,
+                selectedDoctorFilter === null && styles.docFilterPillActive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.docFilterPillText,
+                  selectedDoctorFilter === null && styles.docFilterPillTextActive,
+                ]}
+              >
+                All Doctors ({appointments.length})
+              </Text>
+            </TouchableOpacity>
+
+            {clinicDoctors.map((doc) => {
+              const isSelected = selectedDoctorFilter === doc.slug || selectedDoctorFilter === doc.id;
+              const count = appointments.filter(
+                (a) => a.doctor?.slug === doc.slug || a.doctorId === doc.id || a.doctor?.name === doc.name
+              ).length;
+
+              return (
+                <TouchableOpacity
+                  key={doc.id}
+                  activeOpacity={0.8}
+                  onPress={() => setSelectedDoctorFilter(isSelected ? null : doc.slug)}
+                  style={[styles.docFilterPill, isSelected && styles.docFilterPillActive]}
+                >
+                  <Text
+                    style={[
+                      styles.docFilterPillText,
+                      isSelected && styles.docFilterPillTextActive,
+                    ]}
+                  >
+                    🩺 {doc.name} ({count})
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Minimal 3-Pill Status Filter Bar */}
         <View style={styles.filterBar}>
           <TouchableOpacity
             activeOpacity={0.8}
@@ -190,6 +254,13 @@ export const DoctorScheduleScreen: React.FC = () => {
                     {apt.procedure?.name || 'In-Clinic Consultation'}
                   </Text>
 
+                  {/* Assigned Doctor Tag */}
+                  <View style={styles.assignedDocBadge}>
+                    <Text style={styles.assignedDocBadgeText}>
+                      🩺 {apt.doctor?.name || 'Any Available Specialist'}
+                    </Text>
+                  </View>
+
                   {apt.notes ? (
                     <Text style={styles.notesSnippet} numberOfLines={1}>
                       "{apt.notes}"
@@ -204,7 +275,7 @@ export const DoctorScheduleScreen: React.FC = () => {
                         onPress={() =>
                           openWhatsAppChat(
                             apt.patientPhone!,
-                            `Hello ${apt.patientName}, regarding your visit with ${activeDoctor.name} at ${activeClinic.name}.`
+                            `Hello ${apt.patientName}, regarding your visit with ${apt.doctor?.name || 'our doctor'} at ${activeClinic.name}.`
                           )
                         }
                         style={styles.whatsappAction}
@@ -297,7 +368,36 @@ const styles = StyleSheet.create({
     paddingBottom: 36,
   },
 
-  // Minimal Filter Bar
+  // Doctor Filter Section
+  doctorFilterSection: {
+    marginBottom: 12,
+  },
+  doctorFilterScroll: {
+    gap: 8,
+  },
+  docFilterPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: borderRadius.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  docFilterPillActive: {
+    backgroundColor: '#FAF6EE',
+    borderColor: '#E8D29F',
+  },
+  docFilterPillText: {
+    fontSize: typography.fontSizes.caption - 1,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.textSecondary,
+  },
+  docFilterPillTextActive: {
+    color: colors.primaryDark,
+    fontWeight: typography.fontWeights.bold,
+  },
+
+  // Minimal Status Filter Bar
   filterBar: {
     flexDirection: 'row',
     backgroundColor: colors.surfaceSubtle,
@@ -323,6 +423,21 @@ const styles = StyleSheet.create({
   filterPillTextActive: {
     color: colors.text,
     fontWeight: typography.fontWeights.bold,
+  },
+
+  // Assigned Doctor Badge
+  assignedDocBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FAF6EE',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: borderRadius.sm,
+    marginBottom: 8,
+  },
+  assignedDocBadgeText: {
+    fontSize: typography.fontSizes.micro,
+    color: colors.primaryDark,
+    fontWeight: typography.fontWeights.semibold,
   },
 
   // Appointment Cards List

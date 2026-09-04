@@ -3,6 +3,7 @@ import { MOCK_PROCEDURES, MOCK_CLINICS, MOCK_DOCTORS } from '../data/mockData';
 import { Appointment, AppointmentStatus } from '../types/appointment.types';
 import { Procedure, ProcedureCategory } from '../types/procedure.types';
 import { Clinic, ClinicProcedure } from '../types/clinic.types';
+import { Doctor } from '../types/doctor.types';
 
 export interface DoctorStats {
   todayAppointmentsCount: number;
@@ -36,9 +37,91 @@ export interface NewProcedurePayload {
   priceUnit: string;
 }
 
+export interface NewDoctorPayload {
+  name: string;
+  specialization: string;
+  qualification: string;
+  experienceYears: number;
+  bio?: string;
+  photoUrl?: string;
+}
+
 class DoctorService {
   private knowledgeBaseProcedures: Procedure[] = [...MOCK_PROCEDURES];
   private clinicProcedures: ClinicProcedure[] = [...(MOCK_CLINICS[0]?.procedures || [])];
+  private clinicDoctors: Doctor[] = [...MOCK_DOCTORS];
+
+  // 1. Get Clinic Doctors
+  async getClinicDoctors(clinicId: string): Promise<Doctor[]> {
+    return this.clinicDoctors.filter((d) => !d.clinicId || d.clinicId === clinicId);
+  }
+
+  // 2. Add Doctor to Clinic
+  async addDoctorToClinic(clinicId: string, payload: NewDoctorPayload): Promise<Doctor> {
+    const slug = payload.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+
+    const formattedName = payload.name.startsWith('Dr.') ? payload.name : `Dr. ${payload.name}`;
+
+    const newDoctor: Doctor = {
+      id: 'doc_' + Date.now(),
+      name: formattedName,
+      slug: slug,
+      photoUrl:
+        payload.photoUrl ||
+        'https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=600&auto=format&fit=crop',
+      qualification: payload.qualification,
+      specialization: payload.specialization,
+      experienceYears: payload.experienceYears || 5,
+      bio:
+        payload.bio ||
+        `${formattedName} is an experienced specialist at Dr. Purva's Skin & Laser Clinic specializing in ${payload.specialization}.`,
+      rating: 4.9,
+      reviewCount: 12,
+      clinicId: clinicId,
+      clinicName: "Dr. Purva's Skin & Laser Clinic",
+      isActive: true,
+      proceduresOffered: [
+        'Hydrafacial MD',
+        'Chemical Peel',
+        'Acne Scar Treatment',
+        'Laser Hair Removal',
+        'Botox',
+      ],
+    };
+
+    this.clinicDoctors.push(newDoctor);
+
+    // Also push to MOCK_DOCTORS for customer app discovery
+    MOCK_DOCTORS.push(newDoctor);
+    if (MOCK_CLINICS[0]) {
+      if (!MOCK_CLINICS[0].doctors) MOCK_CLINICS[0].doctors = [];
+      MOCK_CLINICS[0].doctors.push(newDoctor);
+    }
+
+    try {
+      await supabase.from('doctors').insert([newDoctor]);
+    } catch (e) {
+      // local sync
+    }
+
+    return newDoctor;
+  }
+
+  // 3. Toggle Doctor Active Status
+  async toggleDoctorActive(doctorId: string, isActive: boolean): Promise<Doctor | null> {
+    const doc = this.clinicDoctors.find((d) => d.id === doctorId);
+    if (doc) {
+      doc.isActive = isActive;
+    }
+    const mockDoc = MOCK_DOCTORS.find((d) => d.id === doctorId);
+    if (mockDoc) {
+      mockDoc.isActive = isActive;
+    }
+    return doc || null;
+  }
 
   // 1. Get Master Procedure Knowledge Base Catalog
   async getKnowledgeBaseProcedures(): Promise<Procedure[]> {

@@ -147,7 +147,7 @@ export const ProfileScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Section 2: Doctor & Clinic Portal Switcher */}
+        {/* Section 2: Clinic Partner Portal Switcher */}
         <View style={styles.menuGroup}>
           <TouchableOpacity
             activeOpacity={0.88}
@@ -163,14 +163,14 @@ export const ProfileScreen: React.FC = () => {
             </View>
             <View style={styles.menuTextCol}>
               <Text style={[styles.menuTitle, { color: colors.primaryDark }]}>
-                Doctor & Clinic Portal
+                Clinic Partner Portal
               </Text>
               <Text style={styles.menuSubtitle}>
-                Dr. Purva's Skin & Laser Clinic • Manage Queue & Pricing
+                Dr. Purva's Skin & Laser Clinic • Doctors, Queue & Pricing
               </Text>
             </View>
             <View style={styles.doctorBadge}>
-              <Text style={styles.doctorBadgeText}>DOCTOR</Text>
+              <Text style={styles.doctorBadgeText}>CLINIC</Text>
             </View>
             <ChevronRight size={18} color={colors.primary} />
           </TouchableOpacity>

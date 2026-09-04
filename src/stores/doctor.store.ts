@@ -9,27 +9,30 @@ import {
   DoctorStats,
   PatientSummary,
   NewProcedurePayload,
+  NewDoctorPayload,
 } from '../services/doctor.service';
 import { useAppointmentsStore } from './appointments.store';
 
-interface DoctorUserProfile {
+interface ClinicUserProfile {
   id: string;
   name: string;
   email: string;
   clinicName: string;
-  role: 'doctor' | 'clinic_admin';
+  role: 'clinic_admin' | 'doctor';
 }
 
 interface DoctorState {
   activeClinic: Clinic;
   activeDoctor: Doctor;
+  clinicDoctors: Doctor[];
+  selectedDoctorFilter: string | null;
   knowledgeBaseProcedures: Procedure[];
   clinicProcedures: ClinicProcedure[];
   stats: DoctorStats;
   patients: PatientSummary[];
   isDoctorMode: boolean;
   isDoctorAuthenticated: boolean;
-  doctorUser: DoctorUserProfile | null;
+  doctorUser: ClinicUserProfile | null;
   loading: boolean;
   error: string | null;
 
@@ -45,6 +48,9 @@ interface DoctorState {
   loginDoctorWithGoogle: () => Promise<void>;
   doctorLogout: () => Promise<void>;
   setDoctorMode: (active: boolean) => void;
+  setSelectedDoctorFilter: (doctorSlugOrId: string | null) => void;
+  addDoctorToClinic: (payload: NewDoctorPayload) => Promise<Doctor>;
+  toggleDoctorActive: (doctorId: string) => Promise<void>;
   updateAppointmentStatus: (
     appointmentId: string,
     status: AppointmentStatus,
@@ -64,6 +70,8 @@ const STORAGE_KEY_DOCTOR = '@aura_doctor_session';
 export const useDoctorStore = create<DoctorState>((set, get) => ({
   activeClinic: MOCK_CLINICS[0],
   activeDoctor: MOCK_DOCTORS[0],
+  clinicDoctors: [...MOCK_DOCTORS],
+  selectedDoctorFilter: null,
   knowledgeBaseProcedures: [],
   clinicProcedures: MOCK_CLINICS[0]?.procedures || [],
   stats: {
@@ -104,12 +112,12 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
     const formattedName = name.startsWith('Dr.') ? name : `Dr. ${name.charAt(0).toUpperCase() + name.slice(1)}`;
     const clinic = clinicName || get().activeClinic.name;
 
-    const doctorProfile: DoctorUserProfile = {
+    const doctorProfile: ClinicUserProfile = {
       id: 'doc_' + Date.now(),
       name: formattedName,
       email: isEmail ? email : `${email}@clinic.aura.app`,
       clinicName: clinic,
-      role: 'doctor',
+      role: 'clinic_admin',
     };
 
     set({ isDoctorAuthenticated: true, doctorUser: doctorProfile });
@@ -126,12 +134,12 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
 
   loginDoctorWithGoogle: async () => {
     // In demo / staging or Supabase OAuth
-    const doctorProfile: DoctorUserProfile = {
+    const doctorProfile: ClinicUserProfile = {
       id: 'doc_google_' + Date.now(),
-      name: 'Dr. Purva Pande',
+      name: "Dr. Purva's Skin & Laser Clinic Admin",
       email: 'drpurva@skinandlaser.in',
       clinicName: "Dr. Purva's Skin & Laser Clinic",
-      role: 'doctor',
+      role: 'clinic_admin',
     };
 
     set({ isDoctorAuthenticated: true, doctorUser: doctorProfile });
@@ -156,11 +164,42 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
     }
   },
 
+  setSelectedDoctorFilter: (doctorSlugOrId: string | null) => {
+    set({ selectedDoctorFilter: doctorSlugOrId });
+  },
+
+  addDoctorToClinic: async (payload: NewDoctorPayload) => {
+    set({ loading: true });
+    try {
+      const newDoc = await doctorService.addDoctorToClinic(get().activeClinic.id, payload);
+      set({
+        clinicDoctors: [...get().clinicDoctors, newDoc],
+        loading: false,
+      });
+      return newDoc;
+    } catch (e: any) {
+      set({ error: e?.message || 'Failed to add doctor', loading: false });
+      throw e;
+    }
+  },
+
+  toggleDoctorActive: async (doctorId: string) => {
+    const currentDocs = get().clinicDoctors;
+    const target = currentDocs.find((d) => d.id === doctorId);
+    if (target) {
+      const nextActive = !target.isActive;
+      await doctorService.toggleDoctorActive(doctorId, nextActive);
+      const updated = currentDocs.map((d) => (d.id === doctorId ? { ...d, isActive: nextActive } : d));
+      set({ clinicDoctors: updated });
+    }
+  },
+
   initializeDoctorPortal: async () => {
     set({ loading: true, error: null });
     try {
       const kbProcedures = await doctorService.getKnowledgeBaseProcedures();
       const clinicProcs = await doctorService.getClinicProcedures(get().activeClinic.id);
+      const clinicDocs = await doctorService.getClinicDoctors(get().activeClinic.id);
       const allAppointments = useAppointmentsStore.getState().appointments;
       const patients = doctorService.getPatientDirectory(allAppointments);
       const stats = doctorService.calculateStats(allAppointments);
@@ -168,12 +207,13 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
       set({
         knowledgeBaseProcedures: kbProcedures,
         clinicProcedures: clinicProcs,
+        clinicDoctors: clinicDocs,
         patients,
         stats,
         loading: false,
       });
     } catch (e: any) {
-      set({ error: e?.message || 'Failed to initialize Doctor Portal', loading: false });
+      set({ error: e?.message || 'Failed to initialize Clinic Portal', loading: false });
     }
   },
 

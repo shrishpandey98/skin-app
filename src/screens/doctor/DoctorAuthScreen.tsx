@@ -125,15 +125,15 @@ export const DoctorAuthScreen: React.FC = () => {
           {/* Brand Header */}
           <View style={styles.brandHero}>
             <View style={styles.logoBadge}>
-              <Stethoscope size={24} color={colors.primary} />
+              <Building2 size={24} color={colors.primary} />
             </View>
             <View style={styles.portalTag}>
               <Sparkles size={12} color={colors.primaryDark} />
-              <Text style={styles.portalTagText}>DOCTOR & CLINIC PORTAL</Text>
+              <Text style={styles.portalTagText}>CLINIC PARTNER PORTAL</Text>
             </View>
-            <Text style={styles.brandName}>AURA CLINICAL</Text>
+            <Text style={styles.brandName}>AURA CLINIC</Text>
             <Text style={styles.brandTagline}>
-              Manage appointments, procedures, and clinic pricing in real-time
+              Manage clinic appointments, doctors team roster, procedures & pricing
             </Text>
           </View>
 
@@ -148,7 +148,7 @@ export const DoctorAuthScreen: React.FC = () => {
               style={[styles.tabBtn, mode === 'signin' && styles.tabBtnActive]}
             >
               <Text style={[styles.tabBtnText, mode === 'signin' && styles.tabBtnTextActive]}>
-                Doctor Sign In
+                Clinic Sign In
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -177,21 +177,6 @@ export const DoctorAuthScreen: React.FC = () => {
             {mode === 'register' ? (
               <>
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Doctor / Practitioner Name</Text>
-                  <View style={[styles.inputBox, shadows.subtle]}>
-                    <User size={18} color={colors.primary} />
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="e.g. Dr. Purva Pande"
-                      placeholderTextColor={colors.textMuted}
-                      value={doctorName}
-                      onChangeText={setDoctorName}
-                      autoCapitalize="words"
-                    />
-                  </View>
-                </View>
-
-                <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>Clinic Name</Text>
                   <View style={[styles.inputBox, shadows.subtle]}>
                     <Building2 size={18} color={colors.primary} />
@@ -205,11 +190,26 @@ export const DoctorAuthScreen: React.FC = () => {
                     />
                   </View>
                 </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Lead Doctor / Admin Name</Text>
+                  <View style={[styles.inputBox, shadows.subtle]}>
+                    <User size={18} color={colors.primary} />
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. Dr. Purva Pande"
+                      placeholderTextColor={colors.textMuted}
+                      value={doctorName}
+                      onChangeText={setDoctorName}
+                      autoCapitalize="words"
+                    />
+                  </View>
+                </View>
               </>
             ) : null}
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Professional Email / Clinic ID</Text>
+              <Text style={styles.inputLabel}>Clinic Email or Partner ID</Text>
               <View style={[styles.inputBox, shadows.subtle]}>
                 <Mail size={18} color={colors.primary} />
                 <TextInput
