@@ -14,53 +14,14 @@ interface AppointmentsState {
   initializeAppointments: () => Promise<void>;
 }
 
-const STORAGE_KEY = '@aura_appointments';
-
-const INITIAL_MOCK_APPOINTMENTS: Appointment[] = [
-  {
-    id: 'apt_sample_1',
-    userId: 'usr_default',
-    clinicId: 'clinic_aesthetica',
-    doctorId: 'doc_ananya',
-    procedureId: 'proc_hydrafacial',
-    appointmentDate: '2026-09-12',
-    appointmentTime: '03:30 PM',
-    status: 'confirmed',
-    patientName: 'Priya Sharma',
-    patientPhone: '+91 98765 43210',
-    notes: 'First time consultation for pre-wedding skin glow',
-    createdAt: '2026-09-01T10:00:00Z',
-    updatedAt: '2026-09-01T10:00:00Z',
-    clinic: MOCK_CLINICS[0],
-    doctor: MOCK_DOCTORS[0],
-    procedure: MOCK_PROCEDURES[2],
-  },
-  {
-    id: 'apt_sample_2',
-    userId: 'usr_default',
-    clinicId: 'clinic_skin_studio',
-    doctorId: 'doc_mehak',
-    procedureId: 'proc_botox',
-    appointmentDate: '2026-08-10',
-    appointmentTime: '11:00 AM',
-    status: 'completed',
-    patientName: 'Priya Sharma',
-    patientPhone: '+91 98765 43210',
-    notes: 'Baby Botox for forehead lines',
-    createdAt: '2026-08-05T09:30:00Z',
-    updatedAt: '2026-08-10T12:00:00Z',
-    clinic: MOCK_CLINICS[2],
-    doctor: MOCK_DOCTORS[4],
-    procedure: MOCK_PROCEDURES[0],
-  },
-];
+const STORAGE_KEY = '@aura_appointments_clean';
 
 export const useAppointmentsStore = create<AppointmentsState>((set, get) => ({
-  appointments: INITIAL_MOCK_APPOINTMENTS,
+  appointments: [],
 
   createAppointment: async (payload: BookingPayload) => {
     const clinic = MOCK_CLINICS.find((c) => c.id === payload.clinicId || c.slug === payload.clinicId) || MOCK_CLINICS[0];
-    const doctor = payload.doctorId ? MOCK_DOCTORS.find((d) => d.id === payload.doctorId || d.slug === payload.doctorId) : undefined;
+    const doctor = payload.doctorId ? MOCK_DOCTORS.find((d) => d.id === payload.doctorId || d.slug === payload.doctorId) : MOCK_DOCTORS[0];
     const procedure = payload.procedureId ? MOCK_PROCEDURES.find((p) => p.id === payload.procedureId || p.slug === payload.procedureId) : undefined;
 
     const newAppointment: Appointment = {
@@ -143,6 +104,8 @@ export const useAppointmentsStore = create<AppointmentsState>((set, get) => ({
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {
         set({ appointments: JSON.parse(stored) });
+      } else {
+        set({ appointments: [] });
       }
     } catch (e) {
       console.warn('Failed to load appointments', e);

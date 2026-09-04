@@ -34,8 +34,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isGuest: false,
   hasCompletedAuth: false,
   user: null,
-  savedClinics: ['aesthetica-skin-and-laser-clinic'],
-  savedProcedures: ['botox', 'hydrafacial'],
+  savedClinics: [],
+  savedProcedures: [],
 
   login: async (phoneOrEmail: string, name = 'Priya Sharma') => {
     const isEmail = phoneOrEmail.includes('@');

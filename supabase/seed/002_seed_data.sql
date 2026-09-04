@@ -80,7 +80,7 @@ ON CONFLICT (slug) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description;
 
--- 2. SEED CLINICS
+-- 2. SEED CLINICS (SINGLE CLINIC: Dr. Purva's Skin & Laser Clinic)
 INSERT INTO public.clinics (id, name, slug, description, logo_url, cover_image_url, phone, email, address, area, city, state, latitude, longitude, verification_status, rating, review_count, specialties, is_active)
 VALUES
   (
@@ -101,35 +101,14 @@ VALUES
     'verified',
     4.9,
     310,
-    ARRAY['Laser Hair Removal', 'Laser Toning', 'Acne Scars', 'Hydrafacial MD', 'Melasma'],
-    TRUE
-  ),
-  (
-    '22222222-2222-2222-2222-222222222202',
-    'Aesthetica Skin & Laser Clinic',
-    'aesthetica-skin-and-laser-clinic',
-    'Chandigarh’s premier center for modern aesthetic dermatology and US-FDA laser treatments.',
-    'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?q=80&w=300&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1629909613654-28e377c37b09?q=80&w=1200&auto=format&fit=crop',
-    '+911724602121',
-    'contact@aesthetica.clinic',
-    'SCO 142-143, Sector 17-C',
-    'Sector 17',
-    'Chandigarh',
-    'Chandigarh',
-    30.7415,
-    76.7794,
-    'verified',
-    4.9,
-    230,
-    ARRAY['Injectables', 'Laser Hair Removal', 'Skin Tightening', 'Hydrafacial'],
+    ARRAY['Laser Hair Removal', 'Laser Toning', 'Acne Scars', 'Hydrafacial MD', 'Melasma', 'Botox & Fillers', 'Chemical Peels'],
     TRUE
   )
 ON CONFLICT (slug) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description;
 
--- 3. SEED DOCTORS
+-- 3. SEED DOCTORS (Dr. Purva Pande)
 INSERT INTO public.doctors (id, name, slug, photo_url, qualification, specialization, experience_years, bio, rating, review_count, is_active)
 VALUES
   (
@@ -144,19 +123,6 @@ VALUES
     4.9,
     290,
     TRUE
-  ),
-  (
-    '33333333-3333-3333-3333-333333333302',
-    'Dr. Ananya Sharma',
-    'dr-ananya-sharma',
-    'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=600&auto=format&fit=crop',
-    'MD Dermatology (AIIMS New Delhi), FAM (Germany)',
-    'Aesthetic Dermatologist & Injectables Specialist',
-    12,
-    'Dr. Ananya Sharma is a nationally recognized aesthetic dermatologist specializing in subtle Botox micro-dosing and facial harmonisation.',
-    4.9,
-    142,
-    TRUE
   )
 ON CONFLICT (slug) DO UPDATE SET
   name = EXCLUDED.name;
@@ -164,16 +130,15 @@ ON CONFLICT (slug) DO UPDATE SET
 -- 4. SEED CLINIC-DOCTOR ASSOCIATIONS
 INSERT INTO public.clinic_doctors (clinic_id, doctor_id, is_primary)
 VALUES
-  ('22222222-2222-2222-2222-222222222201', '33333333-3333-3333-3333-333333333301', TRUE),
-  ('22222222-2222-2222-2222-222222222202', '33333333-3333-3333-3333-333333333302', TRUE)
+  ('22222222-2222-2222-2222-222222222201', '33333333-3333-3333-3333-333333333301', TRUE)
 ON CONFLICT (clinic_id, doctor_id) DO NOTHING;
 
 -- 5. SEED CLINIC-SPECIFIC PROCEDURES & PRICING
 INSERT INTO public.clinic_procedures (clinic_id, procedure_id, price_from, price_to, price_unit, description, is_available)
 VALUES
-  ('22222222-2222-2222-2222-222222222201', '11111111-1111-1111-1111-111111111103', 2200, 16000, 'per session', 'US-FDA approved painless triple-wavelength diode laser with chilled sapphire crystal.', TRUE),
-  ('22222222-2222-2222-2222-222222222201', '11111111-1111-1111-1111-111111111104', 3500, 8000, 'per session', 'Q-Switched Nd:YAG laser toning for deep dermal pigmentation, melasma & carbon peel glow.', TRUE),
+  ('22222222-2222-2222-2222-222222222201', '11111111-1111-1111-1111-111111111101', 250, 400, 'per unit', 'US-FDA Allergan Botox administered by Dr. Purva Pande with complimentary 2-week review.', TRUE),
   ('22222222-2222-2222-2222-222222222201', '11111111-1111-1111-1111-111111111102', 4800, 7500, 'per session', 'Medical-grade vortex-infusion deep pore cleansing and antioxidant glow.', TRUE),
-  ('22222222-2222-2222-2222-222222222202', '11111111-1111-1111-1111-111111111101', 220, NULL, 'per unit', 'US-FDA Allergan Botox administered by Dr. Ananya Sharma with complimentary touch-up review.', TRUE),
-  ('22222222-2222-2222-2222-222222222202', '11111111-1111-1111-1111-111111111102', 5500, 8500, 'per session', 'Original Hydrafacial MD Elite system with customized booster serum infusions.', TRUE)
+  ('22222222-2222-2222-2222-222222222201', '11111111-1111-1111-1111-111111111103', 2200, 16000, 'per session', 'US-FDA approved painless triple-wavelength diode laser with chilled sapphire crystal.', TRUE),
+  ('22222222-2222-2222-2222-222222222201', '11111111-1111-1111-1111-111111111104', 3500, 8000, 'per session', 'Q-Switched Nd:YAG laser toning for deep dermal pigmentation, melasma & carbon peel glow.', TRUE)
 ON CONFLICT (clinic_id, procedure_id) DO NOTHING;
+
