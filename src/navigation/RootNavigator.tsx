@@ -43,13 +43,6 @@ export const RootNavigator: React.FC = () => {
         <RootStack.Screen name="MainTabs" component={TabNavigator} />
       )}
 
-      {/* Doctor Portal Screen (also directly navigable) */}
-      <RootStack.Screen
-        name="DoctorApp"
-        component={DoctorNavigator}
-        options={{ animation: 'slide_from_right' }}
-      />
-
       {/* Shared Discovery Screens */}
       <RootStack.Screen
         name="ProcedureDetailModal"
