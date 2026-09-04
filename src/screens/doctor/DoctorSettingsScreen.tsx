@@ -30,11 +30,28 @@ import { colors, borderRadius, typography, shadows } from '../../constants/theme
 
 export const DoctorSettingsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const { activeClinic, activeDoctor, setDoctorMode } = useDoctorStore();
+  const { activeClinic, activeDoctor, doctorUser, doctorLogout, setDoctorMode } = useDoctorStore();
 
   const handleSwitchToCustomer = () => {
     setDoctorMode(false);
     navigation.navigate('MainTabs');
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Sign Out of Doctor Portal',
+      'Are you sure you want to sign out from the clinic management portal?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            await doctorLogout();
+          },
+        },
+      ]
+    );
   };
 
   const days = [
@@ -49,8 +66,18 @@ export const DoctorSettingsScreen: React.FC = () => {
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Clinic & Portal Settings</Text>
-        <Text style={styles.headerSubtitle}>{activeClinic.name}</Text>
+        <View style={styles.headerLeft}>
+          <Text style={styles.headerTitle}>Clinic & Portal Settings</Text>
+          <Text style={styles.headerSubtitle}>{activeClinic.name}</Text>
+        </View>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={handleLogout}
+          style={styles.headerLogoutBtn}
+        >
+          <LogOut size={16} color="#D32F2F" />
+          <Text style={styles.headerLogoutText}>Sign Out</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -58,6 +85,26 @@ export const DoctorSettingsScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Logged in Account Banner */}
+        {doctorUser ? (
+          <View style={[styles.accountBanner, shadows.subtle]}>
+            <View style={styles.accountAvatar}>
+              <Text style={styles.accountAvatarText}>
+                {doctorUser.name ? doctorUser.name.replace('Dr. ', '').charAt(0) : 'D'}
+              </Text>
+            </View>
+            <View style={styles.accountTextCol}>
+              <View style={styles.accountNameRow}>
+                <Text style={styles.accountName}>{doctorUser.name}</Text>
+                <View style={styles.rolePill}>
+                  <Text style={styles.rolePillText}>Verified MD</Text>
+                </View>
+              </View>
+              <Text style={styles.accountEmail}>{doctorUser.email}</Text>
+            </View>
+          </View>
+        ) : null}
+
         {/* Switch Role Card */}
         <TouchableOpacity
           activeOpacity={0.88}
@@ -157,12 +204,32 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 10,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerLogoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: borderRadius.sm,
+    backgroundColor: '#FDF2F2',
+  },
+  headerLogoutText: {
+    fontSize: typography.fontSizes.caption,
+    color: '#D32F2F',
+    fontWeight: typography.fontWeights.bold,
   },
   headerTitle: {
     fontSize: typography.fontSizes.h3,
@@ -181,6 +248,62 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 40,
     gap: 14,
+  },
+
+  // Account Banner
+  accountBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    padding: 14,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 12,
+  },
+  accountAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  accountAvatarText: {
+    color: colors.textInverse,
+    fontSize: 18,
+    fontWeight: typography.fontWeights.heavy,
+  },
+  accountTextCol: {
+    flex: 1,
+  },
+  accountNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  accountName: {
+    fontSize: typography.fontSizes.body,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.text,
+  },
+  rolePill: {
+    backgroundColor: '#FAF6EE',
+    borderWidth: 1,
+    borderColor: '#E8D29F',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: borderRadius.pill,
+  },
+  rolePillText: {
+    fontSize: 9,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.primaryDark,
+  },
+  accountEmail: {
+    fontSize: typography.fontSizes.caption - 1,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
 
   // Switch Role Card

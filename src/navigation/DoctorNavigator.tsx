@@ -1,15 +1,18 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Calendar, Sparkles, Building2 } from 'lucide-react-native';
+import { DoctorAuthScreen } from '../screens/doctor/DoctorAuthScreen';
 import { DoctorScheduleScreen } from '../screens/doctor/DoctorScheduleScreen';
 import { DoctorAppointmentDetailScreen } from '../screens/doctor/DoctorAppointmentDetailScreen';
 import { DoctorProceduresScreen } from '../screens/doctor/DoctorProceduresScreen';
 import { DoctorSettingsScreen } from '../screens/doctor/DoctorSettingsScreen';
+import { useDoctorStore } from '../stores/doctor.store';
 import { colors, typography } from '../constants/theme';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
+const DoctorRootStack = createNativeStackNavigator();
 
 const QueueStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -32,7 +35,7 @@ const ClinicStack = () => (
   </Stack.Navigator>
 );
 
-export const DoctorNavigator: React.FC = () => {
+const DoctorTabs: React.FC = () => {
   return (
     <Tab.Navigator
       screenOptions={{
@@ -80,3 +83,28 @@ export const DoctorNavigator: React.FC = () => {
   );
 };
 
+export const DoctorNavigator: React.FC = () => {
+  const { isDoctorAuthenticated, initializeDoctorAuth } = useDoctorStore();
+
+  useEffect(() => {
+    initializeDoctorAuth();
+  }, [initializeDoctorAuth]);
+
+  return (
+    <DoctorRootStack.Navigator screenOptions={{ headerShown: false }}>
+      {!isDoctorAuthenticated ? (
+        <DoctorRootStack.Screen
+          name="DoctorAuth"
+          component={DoctorAuthScreen}
+          options={{ animation: 'fade' }}
+        />
+      ) : (
+        <DoctorRootStack.Screen
+          name="DoctorMain"
+          component={DoctorTabs}
+          options={{ animation: 'fade' }}
+        />
+      )}
+    </DoctorRootStack.Navigator>
+  );
+};

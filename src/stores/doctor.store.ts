@@ -12,6 +12,14 @@ import {
 } from '../services/doctor.service';
 import { useAppointmentsStore } from './appointments.store';
 
+interface DoctorUserProfile {
+  id: string;
+  name: string;
+  email: string;
+  clinicName: string;
+  role: 'doctor' | 'clinic_admin';
+}
+
 interface DoctorState {
   activeClinic: Clinic;
   activeDoctor: Doctor;
@@ -20,11 +28,22 @@ interface DoctorState {
   stats: DoctorStats;
   patients: PatientSummary[];
   isDoctorMode: boolean;
+  isDoctorAuthenticated: boolean;
+  doctorUser: DoctorUserProfile | null;
   loading: boolean;
   error: string | null;
 
   // Actions
   initializeDoctorPortal: () => Promise<void>;
+  initializeDoctorAuth: () => Promise<void>;
+  loginDoctorWithCredentials: (
+    email: string,
+    password: string,
+    doctorName?: string,
+    clinicName?: string
+  ) => Promise<void>;
+  loginDoctorWithGoogle: () => Promise<void>;
+  doctorLogout: () => Promise<void>;
   setDoctorMode: (active: boolean) => void;
   updateAppointmentStatus: (
     appointmentId: string,
@@ -40,6 +59,8 @@ interface DoctorState {
   refreshStats: () => void;
 }
 
+const STORAGE_KEY_DOCTOR = '@aura_doctor_session';
+
 export const useDoctorStore = create<DoctorState>((set, get) => ({
   activeClinic: MOCK_CLINICS[0],
   activeDoctor: MOCK_DOCTORS[0],
@@ -54,8 +75,86 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
   },
   patients: [],
   isDoctorMode: false,
+  isDoctorAuthenticated: false,
+  doctorUser: null,
   loading: false,
   error: null,
+
+  initializeDoctorAuth: async () => {
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const stored = await AsyncStorage.getItem(STORAGE_KEY_DOCTOR);
+      if (stored) {
+        const user = JSON.parse(stored);
+        set({ isDoctorAuthenticated: true, doctorUser: user });
+      }
+    } catch (e) {
+      console.warn('Failed to load doctor auth session', e);
+    }
+  },
+
+  loginDoctorWithCredentials: async (
+    email: string,
+    password: string,
+    doctorName?: string,
+    clinicName?: string
+  ) => {
+    const isEmail = email.includes('@');
+    const name = doctorName || (isEmail ? email.split('@')[0] : email);
+    const formattedName = name.startsWith('Dr.') ? name : `Dr. ${name.charAt(0).toUpperCase() + name.slice(1)}`;
+    const clinic = clinicName || get().activeClinic.name;
+
+    const doctorProfile: DoctorUserProfile = {
+      id: 'doc_' + Date.now(),
+      name: formattedName,
+      email: isEmail ? email : `${email}@clinic.aura.app`,
+      clinicName: clinic,
+      role: 'doctor',
+    };
+
+    set({ isDoctorAuthenticated: true, doctorUser: doctorProfile });
+
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      await AsyncStorage.setItem(STORAGE_KEY_DOCTOR, JSON.stringify(doctorProfile));
+    } catch (e) {
+      console.warn('Failed to persist doctor session', e);
+    }
+
+    await get().initializeDoctorPortal();
+  },
+
+  loginDoctorWithGoogle: async () => {
+    // In demo / staging or Supabase OAuth
+    const doctorProfile: DoctorUserProfile = {
+      id: 'doc_google_' + Date.now(),
+      name: 'Dr. Purva Pande',
+      email: 'drpurva@skinandlaser.in',
+      clinicName: "Dr. Purva's Skin & Laser Clinic",
+      role: 'doctor',
+    };
+
+    set({ isDoctorAuthenticated: true, doctorUser: doctorProfile });
+
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      await AsyncStorage.setItem(STORAGE_KEY_DOCTOR, JSON.stringify(doctorProfile));
+    } catch (e) {
+      console.warn('Failed to persist doctor session', e);
+    }
+
+    await get().initializeDoctorPortal();
+  },
+
+  doctorLogout: async () => {
+    set({ isDoctorAuthenticated: false, doctorUser: null });
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      await AsyncStorage.removeItem(STORAGE_KEY_DOCTOR);
+    } catch (e) {
+      console.warn('Failed to clear doctor session', e);
+    }
+  },
 
   initializeDoctorPortal: async () => {
     set({ loading: true, error: null });
@@ -81,7 +180,11 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
   setDoctorMode: (active: boolean) => {
     set({ isDoctorMode: active });
     if (active) {
-      get().initializeDoctorPortal();
+      get().initializeDoctorAuth().then(() => {
+        if (get().isDoctorAuthenticated) {
+          get().initializeDoctorPortal();
+        }
+      });
     }
   },
 
