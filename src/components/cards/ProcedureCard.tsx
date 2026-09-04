@@ -1,10 +1,37 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
-import { Image } from 'expo-image';
-import { ChevronRight, Bookmark } from 'lucide-react-native';
+import {
+  ChevronRight,
+  Bookmark,
+  Sun,
+  Zap,
+  Sparkles,
+  Wind,
+  Layers,
+  Shield,
+  Activity,
+  Smile,
+  Flame,
+} from 'lucide-react-native';
 import { Procedure } from '../../types/procedure.types';
 import { colors, borderRadius, typography, shadows } from '../../constants/theme';
 import { useAuthStore } from '../../stores/auth.store';
+
+// Mapping for preview icons
+const PROCEDURE_PREVIEW_ICONS: Record<string, { icon: any; color: string; bg: string }> = {
+  hydrafacial: { icon: Sun, color: '#AD904A', bg: '#FAF4E6' },
+  'laser-hair-removal': { icon: Zap, color: '#3E9BAA', bg: '#EAF6F8' },
+  botox: { icon: Sparkles, color: '#36536B', bg: '#EBF1F5' },
+  'dermal-fillers': { icon: Smile, color: '#8A7032', bg: '#FAF4E6' },
+  'prp-hair-treatment': { icon: Wind, color: '#D68C58', bg: '#FDF4ED' },
+  'chemical-peel': { icon: Layers, color: '#AD904A', bg: '#FAF4E6' },
+  'laser-toning': { icon: Zap, color: '#3E9BAA', bg: '#EAF6F8' },
+  'acne-scar-treatment': { icon: Activity, color: '#36536B', bg: '#EBF1F5' },
+  'pigmentation-treatment': { icon: Flame, color: '#D68C58', bg: '#FDF4ED' },
+  'skin-brightening': { icon: Sparkles, color: '#AD904A', bg: '#FAF4E6' },
+  'skin-tightening': { icon: Shield, color: '#36536B', bg: '#EBF1F5' },
+  microneedling: { icon: Activity, color: '#3E9BAA', bg: '#EAF6F8' },
+};
 
 interface ProcedureCardProps {
   procedure: Procedure;
@@ -22,6 +49,13 @@ export const ProcedureCard: React.FC<ProcedureCardProps> = ({
   const { isProcedureSaved, toggleSaveProcedure } = useAuthStore();
   const isSaved = isProcedureSaved(procedure.slug);
 
+  const meta = PROCEDURE_PREVIEW_ICONS[procedure.slug] || {
+    icon: Sparkles,
+    color: colors.primary,
+    bg: colors.primaryLight,
+  };
+  const IconComp = meta.icon;
+
   const handleBookmark = (e: any) => {
     e.stopPropagation?.();
     toggleSaveProcedure(procedure.slug);
@@ -34,24 +68,29 @@ export const ProcedureCard: React.FC<ProcedureCardProps> = ({
         onPress={onPress}
         style={[styles.horizontalCard, shadows.card, style]}
       >
-        <Image
-          source={{ uri: procedure.heroImageUrl }}
-          style={styles.horizontalImage}
-          contentFit="cover"
-          transition={200}
-        />
-        <View style={styles.horizontalContent}>
+        <View style={styles.horizontalTop}>
+          <View style={[styles.iconCircleSm, { backgroundColor: meta.bg }]}>
+            <IconComp size={20} color={meta.color} />
+          </View>
           <View style={styles.categoryBadge}>
             <Text style={styles.categoryBadgeText}>
               {procedure.categoryLabel || procedure.category.toUpperCase()}
             </Text>
           </View>
+        </View>
+
+        <View style={styles.horizontalContent}>
           <Text style={styles.horizontalTitle} numberOfLines={1}>
             {procedure.name}
           </Text>
           <Text style={styles.horizontalDesc} numberOfLines={2}>
             {procedure.shortDescription}
           </Text>
+        </View>
+
+        <View style={styles.horizontalFooter}>
+          <Text style={styles.exploreText}>View Details</Text>
+          <ChevronRight size={14} color={colors.primary} />
         </View>
       </TouchableOpacity>
     );
@@ -63,42 +102,45 @@ export const ProcedureCard: React.FC<ProcedureCardProps> = ({
       onPress={onPress}
       style={[styles.card, shadows.card, style]}
     >
-      <View style={styles.imageContainer}>
-        <Image
-          source={{ uri: procedure.heroImageUrl }}
-          style={styles.image}
-          contentFit="cover"
-          transition={200}
-        />
-        <View style={styles.categoryBadgeOverlay}>
-          <Text style={styles.categoryBadgeOverlayText}>
-            {procedure.categoryLabel || procedure.category.toUpperCase()}
-          </Text>
-        </View>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={handleBookmark}
-          style={styles.saveBtn}
-        >
-          <Bookmark
-            size={16}
-            color={isSaved ? colors.primary : colors.text}
-            fill={isSaved ? colors.primary : 'transparent'}
-          />
-        </TouchableOpacity>
-      </View>
-
       <View style={styles.content}>
-        <View style={styles.headerRow}>
-          <Text style={styles.name}>{procedure.name}</Text>
-          <ChevronRight size={18} color={colors.primary} />
+        <View style={styles.cardTopRow}>
+          <View style={[styles.iconCircle, { backgroundColor: meta.bg }]}>
+            <IconComp size={24} color={meta.color} />
+          </View>
+          <View style={styles.cardTopMiddle}>
+            <View style={styles.categoryBadge}>
+              <Text style={styles.categoryBadgeText}>
+                {procedure.categoryLabel || procedure.category.toUpperCase()}
+              </Text>
+            </View>
+            <Text style={styles.name}>{procedure.name}</Text>
+          </View>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={handleBookmark}
+            style={styles.saveBtn}
+          >
+            <Bookmark
+              size={16}
+              color={isSaved ? colors.primary : colors.textMuted}
+              fill={isSaved ? colors.primary : 'transparent'}
+            />
+          </TouchableOpacity>
         </View>
+
         <Text style={styles.description} numberOfLines={2}>
           {procedure.shortDescription}
         </Text>
 
+        {procedure.downtime ? (
+          <View style={styles.metaRow}>
+            <Text style={styles.metaText}>⏱ {procedure.downtime}</Text>
+          </View>
+        ) : null}
+
         <View style={styles.footerRow}>
-          <Text style={styles.exploreText}>View Treatment Details</Text>
+          <Text style={styles.exploreText}>View Treatment Details & In-Clinic Pricing</Text>
+          <ChevronRight size={16} color={colors.primary} />
         </View>
       </View>
     </TouchableOpacity>
@@ -110,70 +152,80 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     overflow: 'hidden',
-    marginBottom: 16,
+    marginBottom: 14,
     borderWidth: 1,
     borderColor: colors.border,
-  },
-  imageContainer: {
-    width: '100%',
-    height: 160,
-    position: 'relative',
-    backgroundColor: colors.surfaceSubtle,
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-  },
-  categoryBadgeOverlay: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    backgroundColor: 'rgba(26, 24, 36, 0.72)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: borderRadius.pill,
-  },
-  categoryBadgeOverlayText: {
-    fontSize: typography.fontSizes.micro,
-    fontWeight: typography.fontWeights.semibold,
-    color: colors.textInverse,
-    letterSpacing: 0.3,
-  },
-  saveBtn: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   content: {
     padding: 16,
   },
-  headerRow: {
+  cardTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 6,
+    marginBottom: 10,
+  },
+  iconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  iconCircleSm: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardTopMiddle: {
+    flex: 1,
   },
   name: {
-    fontSize: typography.fontSizes.h3,
+    fontSize: typography.fontSizes.h3 - 1,
     fontWeight: typography.fontWeights.bold,
     color: colors.text,
-    flex: 1,
+    marginTop: 2,
+  },
+  categoryBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.surfaceSubtle,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: borderRadius.sm,
+  },
+  categoryBadgeText: {
+    fontSize: typography.fontSizes.micro,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  saveBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.surfaceSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
   },
   description: {
     fontSize: typography.fontSizes.body - 1,
     color: colors.textSecondary,
     lineHeight: 19,
-    marginBottom: 12,
+    marginBottom: 10,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  metaText: {
+    fontSize: typography.fontSizes.micro + 1,
+    color: colors.primaryDark,
+    fontWeight: typography.fontWeights.medium,
   },
   footerRow: {
     flexDirection: 'row',
@@ -189,35 +241,25 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
 
-  // Horizontal Card Variant (for Home Carousel)
+  // Horizontal Card Variant
   horizontalCard: {
-    width: 240,
+    width: 220,
     backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
-    overflow: 'hidden',
-    marginRight: 14,
+    padding: 14,
+    marginRight: 12,
     borderWidth: 1,
     borderColor: colors.border,
+    justifyContent: 'space-between',
   },
-  horizontalImage: {
-    width: '100%',
-    height: 125,
+  horizontalTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
   horizontalContent: {
-    padding: 12,
-  },
-  categoryBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: borderRadius.sm,
-    marginBottom: 6,
-  },
-  categoryBadgeText: {
-    fontSize: typography.fontSizes.micro,
-    fontWeight: typography.fontWeights.semibold,
-    color: colors.primaryDark,
+    marginBottom: 10,
   },
   horizontalTitle: {
     fontSize: typography.fontSizes.body,
@@ -229,5 +271,13 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSizes.caption,
     color: colors.textSecondary,
     lineHeight: 16,
+  },
+  horizontalFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: colors.surfaceSubtle,
+    paddingTop: 8,
   },
 });

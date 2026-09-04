@@ -131,11 +131,9 @@ export const SelectDoctorScreen: React.FC = () => {
                   shadows.subtle,
                 ]}
               >
-                <Image
-                  source={{ uri: doctor.photoUrl }}
-                  style={styles.doctorPhoto}
-                  contentFit="cover"
-                />
+                <View style={styles.doctorAvatarCircle}>
+                  <UserCheck size={22} color={isSelected ? colors.primaryDark : colors.primary} />
+                </View>
                 <View style={styles.doctorInfoCol}>
                   <View style={styles.docTopRow}>
                     <Text style={styles.docName}>{doctor.name}</Text>
@@ -283,11 +281,13 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     borderWidth: 1.5,
   },
-  doctorPhoto: {
-    width: 60,
-    height: 60,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.surfaceSubtle,
+  doctorAvatarCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 12,
   },
   doctorInfoCol: {

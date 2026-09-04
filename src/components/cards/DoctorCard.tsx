@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
-import { Image } from 'expo-image';
-import { Award } from 'lucide-react-native';
+import { Award, UserCheck, ChevronRight } from 'lucide-react-native';
 import { Doctor } from '../../types/doctor.types';
 import { RatingBadge } from '../ui/RatingBadge';
 import { colors, borderRadius, typography, shadows } from '../../constants/theme';
@@ -28,11 +27,13 @@ export const DoctorCard: React.FC<DoctorCardProps> = ({
         onPress={onPress}
         style={[styles.compactCard, shadows.card, style]}
       >
-        <Image
-          source={{ uri: doctor.photoUrl }}
-          style={styles.compactPhoto}
-          contentFit="cover"
-        />
+        <View style={styles.compactTop}>
+          <View style={styles.avatarCircleSm}>
+            <UserCheck size={18} color={colors.primary} />
+          </View>
+          <RatingBadge rating={doctor.rating} reviewCount={doctor.reviewCount} size="sm" />
+        </View>
+
         <View style={styles.compactContent}>
           <Text style={styles.compactName} numberOfLines={1}>
             {doctor.name}
@@ -40,10 +41,11 @@ export const DoctorCard: React.FC<DoctorCardProps> = ({
           <Text style={styles.compactSpec} numberOfLines={1}>
             {doctor.specialization}
           </Text>
-          <View style={styles.compactFooter}>
-            <RatingBadge rating={doctor.rating} reviewCount={doctor.reviewCount} size="sm" />
-            <Text style={styles.compactExp}>{doctor.experienceYears}+ yrs exp</Text>
-          </View>
+        </View>
+
+        <View style={styles.compactFooter}>
+          <Text style={styles.compactExp}>{doctor.experienceYears}+ yrs exp</Text>
+          <ChevronRight size={14} color={colors.primary} />
         </View>
       </TouchableOpacity>
     );
@@ -56,11 +58,9 @@ export const DoctorCard: React.FC<DoctorCardProps> = ({
       style={[styles.card, shadows.card, style]}
     >
       <View style={styles.topRow}>
-        <Image
-          source={{ uri: doctor.photoUrl }}
-          style={styles.photo}
-          contentFit="cover"
-        />
+        <View style={styles.avatarCircle}>
+          <UserCheck size={24} color={colors.primary} />
+        </View>
         <View style={styles.infoCol}>
           <View style={styles.ratingRow}>
             <RatingBadge rating={doctor.rating} reviewCount={doctor.reviewCount} size="sm" />
@@ -111,11 +111,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: 12,
   },
-  photo: {
-    width: 72,
-    height: 72,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.surfaceSubtle,
+  avatarCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarCircleSm: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   infoCol: {
     flex: 1,
@@ -189,22 +199,25 @@ const styles = StyleSheet.create({
     color: colors.textInverse,
   },
 
-  // Compact Variant (for horizontal carousels)
+  // Compact Variant
   compactCard: {
-    width: 200,
+    width: 190,
     backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
-    overflow: 'hidden',
+    padding: 12,
     marginRight: 12,
     borderWidth: 1,
     borderColor: colors.border,
+    justifyContent: 'space-between',
   },
-  compactPhoto: {
-    width: '100%',
-    height: 120,
+  compactTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
   compactContent: {
-    padding: 10,
+    marginBottom: 8,
   },
   compactName: {
     fontSize: typography.fontSizes.body,
@@ -220,7 +233,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: colors.surfaceSubtle,
+    paddingTop: 6,
   },
   compactExp: {
     fontSize: typography.fontSizes.micro,
