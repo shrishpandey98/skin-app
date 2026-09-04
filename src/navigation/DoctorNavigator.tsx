@@ -1,48 +1,33 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Calendar, ListOrdered, Sparkles, Users, Settings } from 'lucide-react-native';
+import { Calendar, Sparkles, Building2 } from 'lucide-react-native';
 import { DoctorScheduleScreen } from '../screens/doctor/DoctorScheduleScreen';
-import { DoctorAppointmentsScreen } from '../screens/doctor/DoctorAppointmentsScreen';
 import { DoctorAppointmentDetailScreen } from '../screens/doctor/DoctorAppointmentDetailScreen';
 import { DoctorProceduresScreen } from '../screens/doctor/DoctorProceduresScreen';
-import { DoctorPatientsScreen } from '../screens/doctor/DoctorPatientsScreen';
 import { DoctorSettingsScreen } from '../screens/doctor/DoctorSettingsScreen';
 import { colors, typography } from '../constants/theme';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-const DoctorScheduleStack = () => (
+const QueueStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="DoctorScheduleMain" component={DoctorScheduleScreen} />
+    <Stack.Screen name="DoctorQueueMain" component={DoctorScheduleScreen} />
     <Stack.Screen name="DoctorAppointmentDetail" component={DoctorAppointmentDetailScreen} />
     <Stack.Screen name="DoctorProcedures" component={DoctorProceduresScreen} />
   </Stack.Navigator>
 );
 
-const DoctorAppointmentsStack = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="DoctorAppointmentsMain" component={DoctorAppointmentsScreen} />
-    <Stack.Screen name="DoctorAppointmentDetail" component={DoctorAppointmentDetailScreen} />
-  </Stack.Navigator>
-);
-
-const DoctorProceduresStack = () => (
+const ProceduresStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="DoctorProceduresMain" component={DoctorProceduresScreen} />
   </Stack.Navigator>
 );
 
-const DoctorPatientsStack = () => (
+const ClinicStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="DoctorPatientsMain" component={DoctorPatientsScreen} />
-  </Stack.Navigator>
-);
-
-const DoctorSettingsStack = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="DoctorSettingsMain" component={DoctorSettingsScreen} />
+    <Stack.Screen name="DoctorClinicMain" component={DoctorSettingsScreen} />
     <Stack.Screen name="DoctorProcedures" component={DoctorProceduresScreen} />
   </Stack.Navigator>
 );
@@ -57,56 +42,41 @@ export const DoctorNavigator: React.FC = () => {
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
-          height: 60,
+          height: 62,
           paddingBottom: 8,
-          paddingTop: 6,
+          paddingTop: 8,
         },
         tabBarLabelStyle: {
-          fontSize: typography.fontSizes.micro,
+          fontSize: typography.fontSizes.micro + 0.5,
           fontWeight: typography.fontWeights.semibold,
         },
       }}
     >
       <Tab.Screen
-        name="DoctorScheduleTab"
-        component={DoctorScheduleStack}
+        name="QueueTab"
+        component={QueueStack}
         options={{
-          tabBarLabel: 'Schedule',
+          tabBarLabel: 'Appointments',
           tabBarIcon: ({ color, size }) => <Calendar size={size - 2} color={color} />,
         }}
       />
       <Tab.Screen
-        name="DoctorAppointmentsTab"
-        component={DoctorAppointmentsStack}
+        name="ProceduresTab"
+        component={ProceduresStack}
         options={{
-          tabBarLabel: 'Queue',
-          tabBarIcon: ({ color, size }) => <ListOrdered size={size - 2} color={color} />,
-        }}
-      />
-      <Tab.Screen
-        name="DoctorProceduresTab"
-        component={DoctorProceduresStack}
-        options={{
-          tabBarLabel: 'Knowledge Base',
+          tabBarLabel: 'Procedures',
           tabBarIcon: ({ color, size }) => <Sparkles size={size - 2} color={color} />,
         }}
       />
       <Tab.Screen
-        name="DoctorPatientsTab"
-        component={DoctorPatientsStack}
-        options={{
-          tabBarLabel: 'Patients',
-          tabBarIcon: ({ color, size }) => <Users size={size - 2} color={color} />,
-        }}
-      />
-      <Tab.Screen
-        name="DoctorSettingsTab"
-        component={DoctorSettingsStack}
+        name="ClinicTab"
+        component={ClinicStack}
         options={{
           tabBarLabel: 'Clinic',
-          tabBarIcon: ({ color, size }) => <Settings size={size - 2} color={color} />,
+          tabBarIcon: ({ color, size }) => <Building2 size={size - 2} color={color} />,
         }}
       />
     </Tab.Navigator>
   );
 };
+

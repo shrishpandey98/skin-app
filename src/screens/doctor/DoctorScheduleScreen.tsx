@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,21 +13,15 @@ import { useNavigation } from '@react-navigation/native';
 import {
   Calendar,
   Clock,
-  User,
-  Stethoscope,
   CheckCircle2,
-  Clock3,
-  XCircle,
-  Sparkles,
-  Phone,
   MessageSquare,
   ArrowRight,
-  PlusCircle,
+  Sparkles,
   Building2,
-  TrendingUp,
 } from 'lucide-react-native';
 import { useDoctorStore } from '../../stores/doctor.store';
 import { useAppointmentsStore } from '../../stores/appointments.store';
+import { Appointment } from '../../types/appointment.types';
 import { colors, borderRadius, typography, shadows } from '../../constants/theme';
 import { openWhatsAppChat } from '../../utils/whatsapp';
 
@@ -43,31 +37,35 @@ export const DoctorScheduleScreen: React.FC = () => {
   } = useDoctorStore();
 
   const { appointments } = useAppointmentsStore();
+  const [filterMode, setFilterMode] = useState<'today' | 'pending' | 'all'>('today');
 
   useEffect(() => {
     initializeDoctorPortal();
   }, []);
 
   const todayStr = new Date().toISOString().split('T')[0];
-  const todayAppointments = appointments.filter((a) => a.appointmentDate === todayStr);
-  const pendingAppointments = appointments.filter((a) => a.status === 'pending');
 
-  const handleConfirm = async (aptId: string, apt: any) => {
+  const displayedAppointments = appointments.filter((apt) => {
+    if (filterMode === 'today') return apt.appointmentDate === todayStr;
+    if (filterMode === 'pending') return apt.status === 'pending';
+    return true; // 'all'
+  });
+
+  const handleConfirm = async (aptId: string, apt: Appointment) => {
     await updateAppointmentStatus(aptId, 'confirmed');
-    // Offer quick WhatsApp confirmation
     if (apt.patientPhone) {
       openWhatsAppChat(
         apt.patientPhone,
-        `Hello ${apt.patientName}, your in-clinic consultation at ${activeClinic.name} for ${apt.appointmentDate} at ${apt.appointmentTime} is CONFIRMED with ${activeDoctor.name}. See you soon!`
+        `Hello ${apt.patientName}, your appointment on ${apt.appointmentDate} at ${apt.appointmentTime} is CONFIRMED with ${activeDoctor.name} at ${activeClinic.name}.`
       );
     }
   };
 
   const handleComplete = async (aptId: string) => {
-    await updateAppointmentStatus(aptId, 'completed', 'Treatment completed successfully.');
+    await updateAppointmentStatus(aptId, 'completed');
   };
 
-  const handleOpenDetail = (apt: any) => {
+  const handleOpenDetail = (apt: Appointment) => {
     navigation.navigate('DoctorAppointmentDetail', { appointment: apt });
   };
 
@@ -75,26 +73,20 @@ export const DoctorScheduleScreen: React.FC = () => {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
-      {/* Header */}
+      {/* Clean Minimal Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <View style={styles.clinicBadge}>
-            <Building2 size={14} color={colors.primary} />
-            <Text style={styles.clinicBadgeText} numberOfLines={1}>
-              {activeClinic.name}
-            </Text>
-          </View>
-          <Text style={styles.headerTitle}>Dr. Purva's Portal</Text>
-          <Text style={styles.headerSubtitle}>Live Schedule & Patient Queue</Text>
+          <Text style={styles.clinicNameText}>{activeClinic.name}</Text>
+          <Text style={styles.headerTitle}>Doctor Appointments</Text>
         </View>
 
         <TouchableOpacity
-          activeOpacity={0.8}
+          activeOpacity={0.85}
           onPress={() => navigation.navigate('DoctorProcedures')}
-          style={styles.headerActionBtn}
+          style={styles.headerPillBtn}
         >
-          <Sparkles size={16} color={colors.primaryDark} />
-          <Text style={styles.headerActionBtnText}>Knowledge Base</Text>
+          <Sparkles size={14} color={colors.primaryDark} />
+          <Text style={styles.headerPillBtnText}>Edit Prices</Text>
         </TouchableOpacity>
       </View>
 
@@ -106,88 +98,54 @@ export const DoctorScheduleScreen: React.FC = () => {
           <RefreshControl refreshing={loading} onRefresh={initializeDoctorPortal} />
         }
       >
-        {/* Metric Cards Row */}
-        <View style={styles.statsRow}>
-          <View style={[styles.statCard, shadows.subtle, { borderLeftColor: colors.primary }]}>
-            <Text style={styles.statNumber}>{stats.todayAppointmentsCount}</Text>
-            <Text style={styles.statLabel}>Today's Queue</Text>
-          </View>
-
-          <View style={[styles.statCard, shadows.subtle, { borderLeftColor: '#E65100' }]}>
-            <Text style={[styles.statNumber, { color: '#E65100' }]}>{stats.pendingCount}</Text>
-            <Text style={styles.statLabel}>Pending Review</Text>
-          </View>
-
-          <View style={[styles.statCard, shadows.subtle, { borderLeftColor: '#2D8A4E' }]}>
-            <Text style={[styles.statNumber, { color: '#2D8A4E' }]}>{stats.confirmedCount}</Text>
-            <Text style={styles.statLabel}>Confirmed</Text>
-          </View>
-
-          <View style={[styles.statCard, shadows.subtle, { borderLeftColor: colors.secondary }]}>
-            <Text style={[styles.statNumber, { color: colors.secondary }]}>{stats.totalPatientsCount}</Text>
-            <Text style={styles.statLabel}>Total Patients</Text>
-          </View>
-        </View>
-
-        {/* Action Banner: Pending Requests */}
-        {pendingAppointments.length > 0 && (
-          <View style={[styles.actionBanner, shadows.subtle]}>
-            <View style={styles.bannerHeader}>
-              <Clock3 size={18} color="#E65100" />
-              <Text style={styles.bannerTitle}>
-                {pendingAppointments.length} Appointment Request(s) Awaiting Confirmation
-              </Text>
-            </View>
-            <Text style={styles.bannerSubtitle}>
-              Patients receive instant WhatsApp updates when you confirm.
-            </Text>
-
-            {pendingAppointments.slice(0, 2).map((apt) => (
-              <View key={apt.id} style={styles.pendingAptRow}>
-                <View style={styles.pendingTextCol}>
-                  <Text style={styles.pendingPatientName}>{apt.patientName}</Text>
-                  <Text style={styles.pendingDetails}>
-                    {apt.procedure?.name || 'General Consultation'} • {apt.appointmentDate} at {apt.appointmentTime}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  onPress={() => handleConfirm(apt.id, apt)}
-                  style={styles.quickConfirmBtn}
-                >
-                  <CheckCircle2 size={15} color="#FFFFFF" />
-                  <Text style={styles.quickConfirmBtnText}>Confirm</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Today's Schedule Timeline Section */}
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionTitleRow}>
-            <Calendar size={18} color={colors.primary} />
-            <Text style={styles.sectionTitle}>Today's Schedule ({todayAppointments.length})</Text>
-          </View>
+        {/* Minimal 3-Pill Filter Bar */}
+        <View style={styles.filterBar}>
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => navigation.navigate('DoctorAppointments')}
+            onPress={() => setFilterMode('today')}
+            style={[styles.filterPill, filterMode === 'today' && styles.filterPillActive]}
           >
-            <Text style={styles.viewAllText}>All Appointments →</Text>
+            <Text style={[styles.filterPillText, filterMode === 'today' && styles.filterPillTextActive]}>
+              Today ({stats.todayAppointmentsCount})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setFilterMode('pending')}
+            style={[styles.filterPill, filterMode === 'pending' && styles.filterPillActive]}
+          >
+            <Text style={[styles.filterPillText, filterMode === 'pending' && styles.filterPillTextActive]}>
+              Pending ({stats.pendingCount})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setFilterMode('all')}
+            style={[styles.filterPill, filterMode === 'all' && styles.filterPillActive]}
+          >
+            <Text style={[styles.filterPillText, filterMode === 'all' && styles.filterPillTextActive]}>
+              All ({appointments.length})
+            </Text>
           </TouchableOpacity>
         </View>
 
-        {todayAppointments.length === 0 ? (
-          <View style={[styles.emptyBox, shadows.subtle]}>
+        {/* Appointment Cards */}
+        {displayedAppointments.length === 0 ? (
+          <View style={[styles.emptyCard, shadows.subtle]}>
             <Calendar size={32} color={colors.textMuted} />
-            <Text style={styles.emptyTitle}>No Appointments Scheduled for Today</Text>
+            <Text style={styles.emptyTitle}>No Appointments</Text>
             <Text style={styles.emptySubtitle}>
-              New customer bookings will appear here in real-time.
+              {filterMode === 'today'
+                ? 'No patient visits scheduled for today.'
+                : 'No appointments in this view.'}
             </Text>
           </View>
         ) : (
-          <View style={styles.timelineList}>
-            {todayAppointments.map((apt) => {
+          <View style={styles.cardsList}>
+            {displayedAppointments.map((apt) => {
+              const isPending = apt.status === 'pending';
               const isConfirmed = apt.status === 'confirmed';
               const isCompleted = apt.status === 'completed';
 
@@ -198,24 +156,28 @@ export const DoctorScheduleScreen: React.FC = () => {
                   onPress={() => handleOpenDetail(apt)}
                   style={[styles.appointmentCard, shadows.card]}
                 >
-                  <View style={styles.cardHeader}>
-                    <View style={styles.timeTag}>
-                      <Clock size={13} color={colors.primaryDark} />
-                      <Text style={styles.timeText}>{apt.appointmentTime}</Text>
+                  <View style={styles.cardTopRow}>
+                    <View style={styles.timeBadge}>
+                      <Clock size={12} color={colors.primaryDark} />
+                      <Text style={styles.timeBadgeText}>
+                        {apt.appointmentTime} • {apt.appointmentDate}
+                      </Text>
                     </View>
 
                     <View
                       style={[
-                        styles.statusPill,
-                        isConfirmed && styles.statusPillConfirmed,
-                        isCompleted && styles.statusPillCompleted,
+                        styles.statusTag,
+                        isPending && styles.statusTagPending,
+                        isConfirmed && styles.statusTagConfirmed,
+                        isCompleted && styles.statusTagCompleted,
                       ]}
                     >
                       <Text
                         style={[
-                          styles.statusPillText,
-                          isConfirmed && styles.statusPillTextConfirmed,
-                          isCompleted && styles.statusPillTextCompleted,
+                          styles.statusTagText,
+                          isPending && styles.statusTagTextPending,
+                          isConfirmed && styles.statusTagTextConfirmed,
+                          isCompleted && styles.statusTagTextCompleted,
                         ]}
                       >
                         {apt.status.toUpperCase()}
@@ -225,73 +187,60 @@ export const DoctorScheduleScreen: React.FC = () => {
 
                   <Text style={styles.patientName}>{apt.patientName}</Text>
                   <Text style={styles.procedureName}>
-                    {apt.procedure?.name || 'In-Clinic Dermatological Consultation'}
+                    {apt.procedure?.name || 'In-Clinic Consultation'}
                   </Text>
 
                   {apt.notes ? (
-                    <Text style={styles.patientNotes} numberOfLines={2}>
-                      Note: "{apt.notes}"
+                    <Text style={styles.notesSnippet} numberOfLines={1}>
+                      "{apt.notes}"
                     </Text>
                   ) : null}
 
-                  {/* Quick Action Footer */}
-                  <View style={styles.cardFooter}>
+                  {/* Minimal 1-Tap Action Strip */}
+                  <View style={styles.actionStrip}>
                     {apt.patientPhone && (
                       <TouchableOpacity
                         activeOpacity={0.8}
-                        onPress={() => openWhatsAppChat(apt.patientPhone, `Hello ${apt.patientName}, checking in regarding your visit today at ${activeClinic.name}.`)}
-                        style={styles.chatActionBtn}
+                        onPress={() =>
+                          openWhatsAppChat(
+                            apt.patientPhone!,
+                            `Hello ${apt.patientName}, regarding your visit with ${activeDoctor.name} at ${activeClinic.name}.`
+                          )
+                        }
+                        style={styles.whatsappAction}
                       >
-                        <MessageSquare size={14} color="#25D366" />
-                        <Text style={styles.chatActionBtnText}>WhatsApp</Text>
+                        <MessageSquare size={13} color="#25D366" />
+                        <Text style={styles.whatsappActionText}>WhatsApp</Text>
                       </TouchableOpacity>
                     )}
 
-                    {isConfirmed && !isCompleted && (
+                    {isPending && (
                       <TouchableOpacity
-                        activeOpacity={0.8}
-                        onPress={() => handleComplete(apt.id)}
-                        style={styles.completeActionBtn}
+                        activeOpacity={0.85}
+                        onPress={() => handleConfirm(apt.id, apt)}
+                        style={styles.confirmAction}
                       >
-                        <CheckCircle2 size={14} color="#2D8A4E" />
-                        <Text style={styles.completeActionBtnText}>Mark Done</Text>
+                        <CheckCircle2 size={13} color="#FFFFFF" />
+                        <Text style={styles.confirmActionText}>Confirm</Text>
                       </TouchableOpacity>
                     )}
 
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      onPress={() => handleOpenDetail(apt)}
-                      style={styles.detailsBtn}
-                    >
-                      <Text style={styles.detailsBtnText}>Details</Text>
-                      <ArrowRight size={13} color={colors.primary} />
-                    </TouchableOpacity>
+                    {isConfirmed && (
+                      <TouchableOpacity
+                        activeOpacity={0.85}
+                        onPress={() => handleComplete(apt.id)}
+                        style={styles.doneAction}
+                      >
+                        <CheckCircle2 size={13} color="#2D8A4E" />
+                        <Text style={styles.doneActionText}>Mark Done</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </TouchableOpacity>
               );
             })}
           </View>
         )}
-
-        {/* Quick Knowledge Base Link Card */}
-        <TouchableOpacity
-          activeOpacity={0.88}
-          onPress={() => navigation.navigate('DoctorProcedures')}
-          style={[styles.knowledgeBaseCard, shadows.card]}
-        >
-          <View style={styles.kbLeft}>
-            <View style={styles.kbIconCircle}>
-              <Sparkles size={20} color={colors.primary} />
-            </View>
-            <View style={styles.kbTextCol}>
-              <Text style={styles.kbTitle}>Procedure Knowledge Base</Text>
-              <Text style={styles.kbSubtitle}>
-                Manage clinic pricing or add new procedures to the central database.
-              </Text>
-            </View>
-          </View>
-          <ArrowRight size={18} color={colors.primary} />
-        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -306,7 +255,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
     paddingVertical: 14,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
@@ -315,37 +264,27 @@ const styles = StyleSheet.create({
   headerLeft: {
     flex: 1,
   },
-  clinicBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 2,
-  },
-  clinicBadgeText: {
+  clinicNameText: {
     fontSize: typography.fontSizes.micro,
-    color: colors.primaryDark,
     fontWeight: typography.fontWeights.bold,
+    color: colors.primaryDark,
+    marginBottom: 2,
   },
   headerTitle: {
     fontSize: typography.fontSizes.h3,
     fontWeight: typography.fontWeights.heavy,
     color: colors.text,
   },
-  headerSubtitle: {
-    fontSize: typography.fontSizes.micro + 1,
-    color: colors.textSecondary,
-    marginTop: 1,
-  },
-  headerActionBtn: {
+  headerPillBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.primaryLight,
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 6,
     borderRadius: borderRadius.pill,
-    gap: 5,
+    gap: 4,
   },
-  headerActionBtnText: {
+  headerPillBtnText: {
     fontSize: typography.fontSizes.micro + 0.5,
     fontWeight: typography.fontWeights.bold,
     color: colors.primaryDark,
@@ -354,152 +293,41 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 18,
+    padding: 16,
     paddingBottom: 36,
   },
 
-  // Stats Grid
-  statsRow: {
+  // Minimal Filter Bar
+  filterBar: {
     flexDirection: 'row',
-    gap: 10,
+    backgroundColor: colors.surfaceSubtle,
+    borderRadius: borderRadius.pill,
+    padding: 4,
     marginBottom: 16,
   },
-  statCard: {
+  filterPill: {
     flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
+    paddingVertical: 8,
     alignItems: 'center',
-    borderLeftWidth: 3.5,
-  },
-  statNumber: {
-    fontSize: typography.fontSizes.h3,
-    fontWeight: typography.fontWeights.heavy,
-    color: colors.text,
-  },
-  statLabel: {
-    fontSize: typography.fontSizes.micro - 0.5,
-    color: colors.textSecondary,
-    fontWeight: typography.fontWeights.semibold,
-    marginTop: 2,
-    textAlign: 'center',
-  },
-
-  // Action Banner
-  actionBanner: {
-    backgroundColor: '#FFF8F0',
-    borderWidth: 1.5,
-    borderColor: '#FFD8B2',
-    borderRadius: borderRadius.lg,
-    padding: 14,
-    marginBottom: 18,
-  },
-  bannerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 2,
-  },
-  bannerTitle: {
-    fontSize: typography.fontSizes.caption + 1,
-    fontWeight: typography.fontWeights.bold,
-    color: '#D95D00',
-  },
-  bannerSubtitle: {
-    fontSize: typography.fontSizes.micro + 1,
-    color: colors.textSecondary,
-    marginBottom: 10,
-  },
-  pendingAptRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surface,
-    padding: 10,
-    borderRadius: borderRadius.md,
-    marginTop: 6,
-  },
-  pendingTextCol: {
-    flex: 1,
-    marginRight: 10,
-  },
-  pendingPatientName: {
-    fontSize: typography.fontSizes.body - 1,
-    fontWeight: typography.fontWeights.bold,
-    color: colors.text,
-  },
-  pendingDetails: {
-    fontSize: typography.fontSizes.micro + 0.5,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  quickConfirmBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#2D8A4E',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
     borderRadius: borderRadius.pill,
-    gap: 4,
   },
-  quickConfirmBtnText: {
-    color: '#FFFFFF',
-    fontSize: typography.fontSizes.micro + 1,
-    fontWeight: typography.fontWeights.bold,
+  filterPillActive: {
+    backgroundColor: colors.surface,
+    ...shadows.subtle,
   },
-
-  // Section Header
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  sectionTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  sectionTitle: {
-    fontSize: typography.fontSizes.bodyLarge,
-    fontWeight: typography.fontWeights.bold,
-    color: colors.text,
-  },
-  viewAllText: {
+  filterPillText: {
     fontSize: typography.fontSizes.caption,
     fontWeight: typography.fontWeights.semibold,
-    color: colors.primary,
-  },
-
-  // Empty Box
-  emptyBox: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 18,
-  },
-  emptyTitle: {
-    fontSize: typography.fontSizes.body,
-    fontWeight: typography.fontWeights.bold,
-    color: colors.text,
-    marginTop: 10,
-  },
-  emptySubtitle: {
-    fontSize: typography.fontSizes.caption,
     color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: 4,
+  },
+  filterPillTextActive: {
+    color: colors.text,
+    fontWeight: typography.fontWeights.bold,
   },
 
-  // Timeline & Appointments
-  timelineList: {
+  // Appointment Cards List
+  cardsList: {
     gap: 12,
-    marginBottom: 18,
   },
   appointmentCard: {
     backgroundColor: colors.surface,
@@ -508,13 +336,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  cardHeader: {
+  cardTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 8,
   },
-  timeTag: {
+  timeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.primaryLight,
@@ -523,36 +351,43 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.pill,
     gap: 4,
   },
-  timeText: {
+  timeBadgeText: {
     fontSize: typography.fontSizes.micro + 0.5,
     fontWeight: typography.fontWeights.bold,
     color: colors.primaryDark,
   },
-  statusPill: {
-    backgroundColor: '#FFF4E5',
+  statusTag: {
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 2.5,
     borderRadius: borderRadius.pill,
+    backgroundColor: colors.surfaceSubtle,
   },
-  statusPillConfirmed: {
+  statusTagPending: {
+    backgroundColor: '#FFF4E5',
+  },
+  statusTagConfirmed: {
     backgroundColor: '#EAF7EE',
   },
-  statusPillCompleted: {
+  statusTagCompleted: {
     backgroundColor: '#EEF2FF',
   },
-  statusPillText: {
-    fontSize: typography.fontSizes.micro,
+  statusTagText: {
+    fontSize: typography.fontSizes.micro - 0.5,
     fontWeight: typography.fontWeights.bold,
+    color: colors.textSecondary,
+  },
+  statusTagTextPending: {
     color: '#B26A00',
   },
-  statusPillTextConfirmed: {
+  statusTagTextConfirmed: {
     color: '#2D8A4E',
   },
-  statusPillTextCompleted: {
+  statusTagTextCompleted: {
     color: '#4F46E5',
   },
+
   patientName: {
-    fontSize: typography.fontSizes.h3 - 1,
+    fontSize: typography.fontSizes.bodyLarge - 1,
     fontWeight: typography.fontWeights.bold,
     color: colors.text,
   },
@@ -560,29 +395,25 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSizes.caption + 1,
     color: colors.textSecondary,
     marginTop: 2,
-    marginBottom: 6,
+    marginBottom: 8,
   },
-  patientNotes: {
-    fontSize: typography.fontSizes.caption,
-    color: colors.text,
+  notesSnippet: {
+    fontSize: typography.fontSizes.caption - 1,
+    color: colors.textMuted,
     fontStyle: 'italic',
-    backgroundColor: colors.surfaceSubtle,
-    padding: 8,
-    borderRadius: borderRadius.sm,
     marginBottom: 10,
   },
 
-  // Card Footer Actions
-  cardFooter: {
+  actionStrip: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
     borderTopWidth: 1,
     borderTopColor: colors.surfaceSubtle,
     paddingTop: 10,
-    gap: 10,
+    gap: 8,
   },
-  chatActionBtn: {
+  whatsappAction: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#E7F9EE',
@@ -591,12 +422,26 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.pill,
     gap: 4,
   },
-  chatActionBtnText: {
+  whatsappActionText: {
     fontSize: typography.fontSizes.micro + 0.5,
     fontWeight: typography.fontWeights.bold,
     color: '#1E7E34',
   },
-  completeActionBtn: {
+  confirmAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2D8A4E',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: borderRadius.pill,
+    gap: 4,
+  },
+  confirmActionText: {
+    color: '#FFFFFF',
+    fontSize: typography.fontSizes.micro + 0.5,
+    fontWeight: typography.fontWeights.bold,
+  },
+  doneAction: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#EAF7EE',
@@ -605,59 +450,32 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.pill,
     gap: 4,
   },
-  completeActionBtnText: {
+  doneActionText: {
     fontSize: typography.fontSizes.micro + 0.5,
     fontWeight: typography.fontWeights.bold,
     color: '#2D8A4E',
   },
-  detailsBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    paddingVertical: 4,
-  },
-  detailsBtnText: {
-    fontSize: typography.fontSizes.caption,
-    fontWeight: typography.fontWeights.semibold,
-    color: colors.primary,
-  },
 
-  // Knowledge Base Banner Card
-  knowledgeBaseCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FAF6EE',
-    borderWidth: 1.5,
-    borderColor: '#E8D29F',
-    borderRadius: borderRadius.lg,
-    padding: 16,
-  },
-  kbLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: 12,
-  },
-  kbIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  emptyCard: {
     backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: 30,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginTop: 20,
   },
-  kbTextCol: {
-    flex: 1,
-  },
-  kbTitle: {
+  emptyTitle: {
     fontSize: typography.fontSizes.body,
     fontWeight: typography.fontWeights.bold,
-    color: colors.primaryDark,
+    color: colors.text,
+    marginTop: 8,
   },
-  kbSubtitle: {
-    fontSize: typography.fontSizes.caption - 1,
+  emptySubtitle: {
+    fontSize: typography.fontSizes.caption,
     color: colors.textSecondary,
-    marginTop: 2,
+    textAlign: 'center',
+    marginTop: 4,
   },
 });
