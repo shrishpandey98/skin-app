@@ -12,16 +12,16 @@ import { useNavigation } from '@react-navigation/native';
 import {
   Sparkles,
   Building2,
-  ShieldCheck,
   ChevronRight,
   Sun,
   Zap,
   Wind,
   Shield,
-  Layers,
   Award,
   CheckCircle2,
   ArrowRight,
+  HelpCircle,
+  Stethoscope,
 } from 'lucide-react-native';
 import { TopBar } from '../../components/ui/TopBar';
 import { SearchBar } from '../../components/ui/SearchBar';
@@ -32,66 +32,18 @@ import { MOCK_PROCEDURES, MOCK_CLINICS } from '../../data/mockData';
 import { colors, borderRadius, typography, shadows } from '../../constants/theme';
 import { analytics } from '../../services/analytics.service';
 
-const QUICK_CATEGORIES = [
-  {
-    id: 'skin',
-    label: 'Skin Glow',
-    icon: Sun,
-    color: '#AD904A',
-    bg: '#FAF4E6',
-    target: 'procedures',
-  },
-  {
-    id: 'injectables',
-    label: 'Injectables',
-    icon: Sparkles,
-    color: '#36536B',
-    bg: '#EBF1F5',
-    target: 'procedures',
-  },
-  {
-    id: 'laser',
-    label: 'Laser Care',
-    icon: Zap,
-    color: '#3E9BAA',
-    bg: '#EAF6F8',
-    target: 'procedures',
-  },
-  {
-    id: 'hair',
-    label: 'Hair PRP',
-    icon: Wind,
-    color: '#D68C58',
-    bg: '#FDF4ED',
-    target: 'procedures',
-  },
-  {
-    id: 'anti_ageing',
-    label: 'Anti-Ageing',
-    icon: Shield,
-    color: '#AD904A',
-    bg: '#FAF4E6',
-    target: 'procedures',
-  },
-  {
-    id: 'all_clinics',
-    label: 'All Clinics',
-    icon: Building2,
-    color: '#36536B',
-    bg: '#EBF1F5',
-    target: 'clinics',
-  },
-];
-
-const TRENDING_SEARCHES = [
-  { label: 'HydraFacial', slug: 'hydrafacial' },
-  { label: 'Laser Hair Reduction', slug: 'laser-hair-reduction' },
-  { label: 'Botox Anti-Wrinkle', slug: 'botox-anti-wrinkle' },
-  { label: 'PRP Hair Therapy', slug: 'prp-hair-therapy' },
+const PROCEDURE_QUICK_FILTERS = [
+  { id: 'all', label: 'All Treatments' },
+  { id: 'skin', label: 'Skin Glow' },
+  { id: 'laser', label: 'Laser' },
+  { id: 'injectables', label: 'Botox & Fillers' },
+  { id: 'hair', label: 'Hair PRP' },
+  { id: 'anti_ageing', label: 'Anti-Ageing' },
 ];
 
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const [selectedFilter, setSelectedFilter] = React.useState('all');
 
   useEffect(() => {
     analytics.track('app_opened');
@@ -101,8 +53,12 @@ export const HomeScreen: React.FC = () => {
     navigation.navigate('SearchResultsModal');
   };
 
-  const handleExploreProcedures = () => {
-    navigation.navigate('ProceduresTab');
+  const handleExploreProcedures = (category?: string) => {
+    if (category && category !== 'all') {
+      navigation.navigate('ProceduresTab', { initialCategory: category });
+    } else {
+      navigation.navigate('ProceduresTab');
+    }
   };
 
   const handleFindClinics = () => {
@@ -124,13 +80,10 @@ export const HomeScreen: React.FC = () => {
     navigation.navigate('ClinicDetailModal', { clinicSlug: slug });
   };
 
-  const handleCategoryPress = (item: typeof QUICK_CATEGORIES[0]) => {
-    if (item.target === 'clinics') {
-      navigation.navigate('ClinicsTab');
-    } else {
-      navigation.navigate('ProceduresTab', { initialCategory: item.id });
-    }
-  };
+  const filteredProcedures =
+    selectedFilter === 'all'
+      ? MOCK_PROCEDURES
+      : MOCK_PROCEDURES.filter((p) => p.category === selectedFilter);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -142,107 +95,69 @@ export const HomeScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero Header & Search */}
+        {/* Search Header */}
         <View style={styles.heroSection}>
-          <View style={styles.heroBadgeRow}>
-            <View style={styles.locationPill}>
-              <Award size={12} color={colors.primary} />
-              <Text style={styles.locationPillText}>Chandigarh & Panchkula</Text>
-            </View>
-          </View>
-
           <Text style={styles.heroTitle}>Aesthetic Care, Curated</Text>
           <Text style={styles.heroSubtitle}>
             Verified dermatology clinics & transparent pricing
           </Text>
 
-          {/* Quick Search Bar */}
           <SearchBar
             placeholder="Search treatments, clinics or concerns..."
             isTouchableOnly
             onPress={handleSearchPress}
             style={styles.searchBar}
           />
+        </View>
 
-          {/* Trending Quick Search Chips */}
+        {/* ─────────────────────────────────────────────────────────────
+            1. COMMON PROCEDURES
+           ───────────────────────────────────────────────────────────── */}
+        <View style={styles.section}>
+          <SectionHeader
+            title="Common Procedures"
+            actionText="See All (12+)"
+            onActionPress={() => handleExploreProcedures()}
+          />
+
+          {/* Category Filter Pills */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.trendingScroll}
+            contentContainerStyle={styles.filterScroll}
           >
-            <Text style={styles.trendingPrefix}>Popular:</Text>
-            {TRENDING_SEARCHES.map((item, idx) => (
-              <TouchableOpacity
-                key={idx}
-                activeOpacity={0.7}
-                onPress={() => handleProcedurePress(item.slug, item.label)}
-                style={styles.trendingChip}
-              >
-                <Text style={styles.trendingChipText}>{item.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* 6-Item Quick Category Grid */}
-        <View style={styles.categorySection}>
-          <View style={styles.categoryGrid}>
-            {QUICK_CATEGORIES.map((cat) => {
-              const IconComp = cat.icon;
+            {PROCEDURE_QUICK_FILTERS.map((cat) => {
+              const isActive = selectedFilter === cat.id;
               return (
                 <TouchableOpacity
                   key={cat.id}
                   activeOpacity={0.75}
-                  onPress={() => handleCategoryPress(cat)}
-                  style={styles.categoryItem}
+                  onPress={() => setSelectedFilter(cat.id)}
+                  style={[
+                    styles.filterPill,
+                    isActive ? styles.filterPillActive : styles.filterPillInactive,
+                  ]}
                 >
-                  <View style={[styles.categoryIconCircle, { backgroundColor: cat.bg }]}>
-                    <IconComp size={20} color={cat.color} />
-                  </View>
-                  <Text style={styles.categoryItemLabel} numberOfLines={1}>
+                  <Text
+                    style={[
+                      styles.filterPillText,
+                      isActive ? styles.filterPillTextActive : styles.filterPillTextInactive,
+                    ]}
+                  >
                     {cat.label}
                   </Text>
                 </TouchableOpacity>
               );
             })}
-          </View>
-        </View>
+          </ScrollView>
 
-        {/* Guided Match Interactive Banner */}
-        <TouchableOpacity
-          activeOpacity={0.88}
-          onPress={handleNotSure}
-          style={[styles.guidedBanner, shadows.subtle]}
-        >
-          <View style={styles.guidedLeft}>
-            <View style={styles.guidedIconWrapper}>
-              <Sparkles size={20} color={colors.primary} />
-            </View>
-            <View style={styles.guidedTextContainer}>
-              <Text style={styles.guidedTitle}>Not sure what your skin needs?</Text>
-              <Text style={styles.guidedSubtitle}>
-                Take a 30-second guided quiz to find doctor-backed treatments
-              </Text>
-            </View>
-          </View>
-          <View style={styles.guidedArrowBtn}>
-            <ArrowRight size={16} color={colors.primaryDark} />
-          </View>
-        </TouchableOpacity>
-
-        {/* Popular Treatments Section */}
-        <View style={styles.section}>
-          <SectionHeader
-            title="Popular Treatments"
-            actionText="See All (12+)"
-            onActionPress={handleExploreProcedures}
-          />
+          {/* Procedures Carousel */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.horizontalScroll}
           >
-            {MOCK_PROCEDURES.slice(0, 6).map((proc) => (
+            {filteredProcedures.slice(0, 6).map((proc) => (
               <ProcedureCard
                 key={proc.id}
                 procedure={proc}
@@ -253,7 +168,38 @@ export const HomeScreen: React.FC = () => {
           </ScrollView>
         </View>
 
-        {/* Top Verified Clinics Section */}
+        {/* ─────────────────────────────────────────────────────────────
+            2. NOT SURE ... (PROMINENTLY HIGHLIGHTED)
+           ───────────────────────────────────────────────────────────── */}
+        <View style={styles.notSureWrapper}>
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={handleNotSure}
+            style={[styles.notSureCard, shadows.card]}
+          >
+            {/* Top Accent Tag */}
+            <View style={styles.notSureTag}>
+              <Sparkles size={13} color={colors.primaryDark} />
+              <Text style={styles.notSureTagText}>GUIDED TREATMENT FINDER</Text>
+            </View>
+
+            {/* Headline & Description */}
+            <Text style={styles.notSureTitle}>Not sure what your skin needs?</Text>
+            <Text style={styles.notSureDescription}>
+              Answer 3 simple questions about your concerns to get matched with doctor-recommended treatments and direct pricing.
+            </Text>
+
+            {/* Highlighted CTA Button */}
+            <View style={styles.notSureCta}>
+              <Text style={styles.notSureCtaText}>Start 30-Sec Assessment</Text>
+              <ArrowRight size={16} color={colors.textInverse} />
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* ─────────────────────────────────────────────────────────────
+            3. TOP VERIFIED CLINICS
+           ───────────────────────────────────────────────────────────── */}
         <View style={styles.section}>
           <SectionHeader
             title="Top Verified Clinics"
@@ -276,20 +222,20 @@ export const HomeScreen: React.FC = () => {
           </ScrollView>
         </View>
 
-        {/* Sleek Trust & Safety Strip */}
+        {/* Trust & Safety Strip */}
         <View style={styles.trustStrip}>
           <View style={styles.trustItem}>
-            <CheckCircle2 size={16} color={colors.primary} />
+            <CheckCircle2 size={15} color={colors.primary} />
             <Text style={styles.trustItemText}>Verified MDs Only</Text>
           </View>
           <View style={styles.trustDivider} />
           <View style={styles.trustItem}>
-            <CheckCircle2 size={16} color={colors.primary} />
+            <CheckCircle2 size={15} color={colors.primary} />
             <Text style={styles.trustItemText}>Direct Clinic Pricing</Text>
           </View>
           <View style={styles.trustDivider} />
           <View style={styles.trustItem}>
-            <CheckCircle2 size={16} color={colors.primary} />
+            <CheckCircle2 size={15} color={colors.primary} />
             <Text style={styles.trustItemText}>Zero Booking Fees</Text>
           </View>
         </View>
@@ -314,174 +260,129 @@ const styles = StyleSheet.create({
   // Hero Section
   heroSection: {
     paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 8,
-  },
-  heroBadgeRow: {
-    flexDirection: 'row',
-    marginBottom: 6,
-  },
-  locationPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: borderRadius.pill,
-    gap: 5,
-  },
-  locationPillText: {
-    fontSize: typography.fontSizes.micro,
-    fontWeight: typography.fontWeights.bold,
-    color: colors.primaryDark,
-    letterSpacing: 0.2,
+    paddingTop: 8,
+    paddingBottom: 4,
   },
   heroTitle: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: typography.fontWeights.heavy,
     color: colors.text,
-    letterSpacing: -0.5,
-    lineHeight: 32,
+    letterSpacing: -0.4,
   },
   heroSubtitle: {
-    fontSize: typography.fontSizes.body - 1,
+    fontSize: typography.fontSizes.caption + 1,
     color: colors.textSecondary,
-    marginTop: 4,
-    marginBottom: 16,
+    marginTop: 3,
+    marginBottom: 14,
   },
   searchBar: {
-    marginBottom: 10,
-  },
-
-  // Trending Search Chips
-  trendingScroll: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 4,
-    gap: 8,
-  },
-  trendingPrefix: {
-    fontSize: typography.fontSizes.micro,
-    fontWeight: typography.fontWeights.semibold,
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginRight: 2,
-  },
-  trendingChip: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: borderRadius.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  trendingChipText: {
-    fontSize: typography.fontSizes.micro + 1,
-    color: colors.textSecondary,
-    fontWeight: typography.fontWeights.medium,
-  },
-
-  // Category Grid (2 rows of 3 items for clean balance)
-  categorySection: {
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-  },
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    rowGap: 14,
-  },
-  categoryItem: {
-    width: '30%',
-    alignItems: 'center',
-  },
-  categoryIconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginBottom: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
-  },
-  categoryItemLabel: {
-    fontSize: typography.fontSizes.caption,
-    fontWeight: typography.fontWeights.semibold,
-    color: colors.text,
-    textAlign: 'center',
-  },
-
-  // Guided Match Banner
-  guidedBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FAF6ED',
-    marginHorizontal: 20,
-    marginVertical: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: '#EFE1C5',
-  },
-  guidedLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 12,
-  },
-  guidedIconWrapper: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  guidedTextContainer: {
-    flex: 1,
-  },
-  guidedTitle: {
-    fontSize: typography.fontSizes.body - 1,
-    fontWeight: typography.fontWeights.bold,
-    color: colors.text,
-    marginBottom: 2,
-  },
-  guidedSubtitle: {
-    fontSize: typography.fontSizes.micro + 0.5,
-    color: colors.textSecondary,
-    lineHeight: 15,
-  },
-  guidedArrowBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#EFE1C5',
   },
 
   // Sections
   section: {
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: 18,
     paddingLeft: 20,
+  },
+  filterScroll: {
+    paddingRight: 20,
+    gap: 8,
+    marginBottom: 12,
+  },
+  filterPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: borderRadius.pill,
+    borderWidth: 1,
+  },
+  filterPillActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  filterPillInactive: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+  },
+  filterPillText: {
+    fontSize: typography.fontSizes.caption,
+    fontWeight: typography.fontWeights.semibold,
+  },
+  filterPillTextActive: {
+    color: colors.textInverse,
+  },
+  filterPillTextInactive: {
+    color: colors.textSecondary,
   },
   horizontalScroll: {
     paddingRight: 20,
-    paddingTop: 4,
+    paddingTop: 2,
     paddingBottom: 6,
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // 2. NOT SURE ... (PROMINENT HIGHLIGHT CARD)
+  // ─────────────────────────────────────────────────────────────
+  notSureWrapper: {
+    paddingHorizontal: 20,
+    marginTop: 22,
+    marginBottom: 4,
+  },
+  notSureCard: {
+    backgroundColor: '#FAF5EA',
+    borderRadius: borderRadius.xl,
+    padding: 20,
+    borderWidth: 1.5,
+    borderColor: '#DEC481',
+  },
+  notSureTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#F3E4BF',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: borderRadius.pill,
+    gap: 5,
+    marginBottom: 10,
+  },
+  notSureTagText: {
+    fontSize: typography.fontSizes.micro,
+    fontWeight: typography.fontWeights.heavy,
+    color: colors.primaryDark,
+    letterSpacing: 0.6,
+  },
+  notSureTitle: {
+    fontSize: typography.fontSizes.h3 + 1,
+    fontWeight: typography.fontWeights.heavy,
+    color: colors.text,
+    marginBottom: 6,
+    letterSpacing: -0.2,
+  },
+  notSureDescription: {
+    fontSize: typography.fontSizes.body - 1,
+    color: colors.textSecondary,
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  notSureCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: borderRadius.pill,
+    gap: 8,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  notSureCtaText: {
+    color: colors.textInverse,
+    fontSize: typography.fontSizes.body - 1,
+    fontWeight: typography.fontWeights.bold,
+    letterSpacing: 0.2,
   },
 
   // Trust Strip
@@ -490,7 +391,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-around',
     marginHorizontal: 20,
-    marginTop: 20,
+    marginTop: 24,
     backgroundColor: colors.surface,
     paddingVertical: 14,
     paddingHorizontal: 12,
@@ -501,7 +402,7 @@ const styles = StyleSheet.create({
   trustItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
   trustItemText: {
     fontSize: typography.fontSizes.micro,
