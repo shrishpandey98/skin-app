@@ -18,6 +18,7 @@ import { clinicsService, ClinicFilters } from '../../services/clinics.service';
 import { Clinic } from '../../types/clinic.types';
 import { colors, typography } from '../../constants/theme';
 import { analytics } from '../../services/analytics.service';
+import { FloatingBackButton } from '../../components/ui/FloatingBackButton';
 
 const SORT_OPTIONS = [
   { id: 'recommended', label: 'Recommended' },
@@ -151,6 +152,9 @@ export const ClinicsScreen: React.FC = () => {
           ) : null
         }
       />
+
+      {/* Floating Back Button */}
+      <FloatingBackButton position="bottom-left" fallbackScreen="HomeTab" />
     </SafeAreaView>
   );
 };

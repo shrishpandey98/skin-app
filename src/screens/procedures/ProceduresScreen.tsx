@@ -19,6 +19,7 @@ import { proceduresService } from '../../services/procedures.service';
 import { Procedure } from '../../types/procedure.types';
 import { colors, typography } from '../../constants/theme';
 import { analytics } from '../../services/analytics.service';
+import { FloatingBackButton } from '../../components/ui/FloatingBackButton';
 
 export const ProceduresScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -131,6 +132,9 @@ export const ProceduresScreen: React.FC = () => {
           ) : null
         }
       />
+
+      {/* Floating Back Button */}
+      <FloatingBackButton position="bottom-left" fallbackScreen="HomeTab" />
     </SafeAreaView>
   );
 };

@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Sparkles, Mail, Lock, User, Eye, EyeOff, ArrowRight, ShieldCheck } from 'lucide-react-native';
 import { useAuthStore } from '../../stores/auth.store';
 import { colors, borderRadius, typography, shadows } from '../../constants/theme';
+import { FloatingBackButton } from '../../components/ui/FloatingBackButton';
 
 export const AuthScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -84,6 +85,8 @@ export const AuthScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+
+      {navigation.canGoBack() && <FloatingBackButton position="top-left" />}
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
