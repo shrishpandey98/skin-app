@@ -67,10 +67,59 @@ interface DoctorState {
 
 const STORAGE_KEY_DOCTOR = '@aura_doctor_session';
 
+const DEFAULT_CLINIC: Clinic = {
+  id: 'clinic_aura_partner',
+  name: 'Clinic Partner Dashboard',
+  slug: 'clinic-partner',
+  description: 'Aesthetic dermatology & laser center.',
+  logoUrl: '',
+  coverImageUrl: '',
+  phone: '+91 98765 43210',
+  email: 'partner@aura.app',
+  address: 'Chandigarh Tricity',
+  area: 'Chandigarh',
+  city: 'Chandigarh',
+  state: 'Chandigarh',
+  latitude: 30.7333,
+  longitude: 76.7794,
+  openingHours: {
+    monday: { open: '10:00 AM', close: '07:00 PM' },
+    tuesday: { open: '10:00 AM', close: '07:00 PM' },
+    wednesday: { open: '10:00 AM', close: '07:00 PM' },
+    thursday: { open: '10:00 AM', close: '07:00 PM' },
+    friday: { open: '10:00 AM', close: '07:00 PM' },
+    saturday: { open: '10:00 AM', close: '06:30 PM' },
+    sunday: { open: 'Closed', close: 'Closed', isClosed: true },
+  },
+  verificationStatus: 'verified',
+  rating: 5.0,
+  reviewCount: 0,
+  specialties: ['Dermatology', 'Laser', 'Aesthetics'],
+  galleryImages: [],
+  isActive: true,
+  procedures: [],
+  doctors: [],
+};
+
+const DEFAULT_DOCTOR: Doctor = {
+  id: 'doc_lead',
+  name: 'Lead Dermatologist',
+  slug: 'lead-dermatologist',
+  photoUrl: 'https://images.unsplash.com/photo-1594824813686-21a4413158c3?q=80&w=600&auto=format&fit=crop',
+  qualification: 'MBBS, MD Dermatology',
+  specialization: 'Chief Dermatologist',
+  experienceYears: 10,
+  bio: 'Experienced dermatologist and aesthetic practitioner.',
+  rating: 5.0,
+  reviewCount: 0,
+  isActive: true,
+  proceduresOffered: [],
+};
+
 export const useDoctorStore = create<DoctorState>((set, get) => ({
-  activeClinic: MOCK_CLINICS[0],
-  activeDoctor: MOCK_DOCTORS[0],
-  clinicDoctors: [...MOCK_DOCTORS],
+  activeClinic: MOCK_CLINICS[0] || DEFAULT_CLINIC,
+  activeDoctor: MOCK_DOCTORS[0] || DEFAULT_DOCTOR,
+  clinicDoctors: MOCK_DOCTORS.length > 0 ? [...MOCK_DOCTORS] : [],
   selectedDoctorFilter: null,
   knowledgeBaseProcedures: [],
   clinicProcedures: MOCK_CLINICS[0]?.procedures || [],

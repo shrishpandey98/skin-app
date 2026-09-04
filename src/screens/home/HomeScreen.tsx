@@ -300,29 +300,31 @@ export const HomeScreen: React.FC = () => {
         </View>
 
         {/* ─────────────────────────────────────────────────────────────
-            3. TOP VERIFIED CLINICS
+            3. TOP VERIFIED CLINICS (Rendered if clinics exist)
            ───────────────────────────────────────────────────────────── */}
-        <View style={styles.clinicsSection}>
-          <SectionHeader
-            title="Top Verified Clinics"
-            actionText="View All"
-            onActionPress={handleFindClinics}
-          />
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.horizontalScroll}
-          >
-            {MOCK_CLINICS.map((clinic) => (
-              <ClinicCard
-                key={clinic.id}
-                clinic={clinic}
-                variant="horizontal"
-                onPress={() => handleClinicPress(clinic.slug, clinic.name)}
-              />
-            ))}
-          </ScrollView>
-        </View>
+        {MOCK_CLINICS.length > 0 ? (
+          <View style={styles.clinicsSection}>
+            <SectionHeader
+              title="Top Verified Clinics"
+              actionText="View All"
+              onActionPress={handleFindClinics}
+            />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalScroll}
+            >
+              {MOCK_CLINICS.map((clinic) => (
+                <ClinicCard
+                  key={clinic.id}
+                  clinic={clinic}
+                  variant="horizontal"
+                  onPress={() => handleClinicPress(clinic.slug, clinic.name)}
+                />
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
 
         {/* Trust & Safety Reassurance */}
         <View style={styles.trustStrip}>

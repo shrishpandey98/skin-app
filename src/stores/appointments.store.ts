@@ -20,9 +20,23 @@ export const useAppointmentsStore = create<AppointmentsState>((set, get) => ({
   appointments: [],
 
   createAppointment: async (payload: BookingPayload) => {
-    const clinic = MOCK_CLINICS.find((c) => c.id === payload.clinicId || c.slug === payload.clinicId) || MOCK_CLINICS[0];
-    const doctor = payload.doctorId ? MOCK_DOCTORS.find((d) => d.id === payload.doctorId || d.slug === payload.doctorId) : MOCK_DOCTORS[0];
-    const procedure = payload.procedureId ? MOCK_PROCEDURES.find((p) => p.id === payload.procedureId || p.slug === payload.procedureId) : undefined;
+    const clinic =
+      MOCK_CLINICS.find((c) => c.id === payload.clinicId || c.slug === payload.clinicId) ||
+      ({
+        id: payload.clinicId || 'clinic_default',
+        name: 'Aesthetic Clinic',
+        slug: payload.clinicId || 'clinic-default',
+        address: 'Chandigarh',
+        phone: '+91 98765 43210',
+      } as any);
+
+    const doctor = payload.doctorId
+      ? MOCK_DOCTORS.find((d) => d.id === payload.doctorId || d.slug === payload.doctorId)
+      : undefined;
+
+    const procedure = payload.procedureId
+      ? MOCK_PROCEDURES.find((p) => p.id === payload.procedureId || p.slug === payload.procedureId)
+      : undefined;
 
     const newAppointment: Appointment = {
       id: 'apt_' + Date.now(),
