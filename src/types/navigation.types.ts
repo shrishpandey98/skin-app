@@ -125,5 +125,6 @@ export type RootStackParamList = {
   NotSureFlow: NavigatorScreenParams<NotSureStackParamList>;
   BookingFlow: NavigatorScreenParams<BookingStackParamList>;
   ProfileFlow: NavigatorScreenParams<ProfileStackParamList>;
-  AuthFlow: NavigatorScreenParams<AuthStackParamList>;
+  // Doctor & Clinic Portal
+  DoctorApp: undefined;
 };

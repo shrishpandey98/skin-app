@@ -259,6 +259,20 @@ export const AuthScreen: React.FC = () => {
             </Text>
           </TouchableOpacity>
 
+          {/* Doctor / Clinic Admin Mode Quick Link */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => {
+              const { setDoctorMode } = require('../../stores/doctor.store').useDoctorStore.getState();
+              setDoctorMode(true);
+            }}
+            style={styles.doctorPortalBtn}
+          >
+            <Text style={styles.doctorPortalBtnText}>
+              🩺 Clinic Staff or Doctor? <Text style={{ textDecorationLine: 'underline' }}>Open Doctor Portal</Text>
+            </Text>
+          </TouchableOpacity>
+
           {/* Privacy Reassurance */}
           <View style={styles.trustBox}>
             <ShieldCheck size={14} color={colors.primary} />
@@ -480,6 +494,19 @@ const styles = StyleSheet.create({
   guestBtnSubtitle: {
     fontSize: typography.fontSizes.caption - 1,
     color: colors.textSecondary,
+  },
+
+  // Doctor Portal Button
+  doctorPortalBtn: {
+    alignItems: 'center',
+    paddingVertical: 10,
+    marginTop: 4,
+    marginBottom: 6,
+  },
+  doctorPortalBtnText: {
+    fontSize: typography.fontSizes.caption,
+    color: colors.primaryDark,
+    fontWeight: typography.fontWeights.semibold,
   },
 
   // Trust Footnote

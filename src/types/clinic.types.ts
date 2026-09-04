@@ -30,7 +30,10 @@ export interface ClinicProcedurePricing {
   description?: string;
   isAvailable: boolean;
   procedure?: Procedure;
+  procedures?: Procedure;
 }
+
+export type ClinicProcedure = ClinicProcedurePricing;
 
 export interface Clinic {
   id: string;

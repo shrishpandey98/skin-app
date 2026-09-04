@@ -22,6 +22,7 @@ import {
   ChevronRight,
   ShieldCheck,
   Phone,
+  Building2,
 } from 'lucide-react-native';
 import { useAuthStore } from '../../stores/auth.store';
 import { useAppointmentsStore } from '../../stores/appointments.store';
@@ -146,7 +147,36 @@ export const ProfileScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Section 2: Account Settings */}
+        {/* Section 2: Doctor & Clinic Portal Switcher */}
+        <View style={styles.menuGroup}>
+          <TouchableOpacity
+            activeOpacity={0.88}
+            onPress={() => {
+              const { setDoctorMode } = require('../../stores/doctor.store').useDoctorStore.getState();
+              setDoctorMode(true);
+              navigation.navigate('DoctorApp');
+            }}
+            style={[styles.menuItem, { backgroundColor: '#FAF6EE' }]}
+          >
+            <View style={[styles.iconBox, { backgroundColor: colors.primaryLight }]}>
+              <Building2 size={18} color={colors.primary} />
+            </View>
+            <View style={styles.menuTextCol}>
+              <Text style={[styles.menuTitle, { color: colors.primaryDark }]}>
+                Doctor & Clinic Portal
+              </Text>
+              <Text style={styles.menuSubtitle}>
+                Dr. Purva's Skin & Laser Clinic • Manage Queue & Pricing
+              </Text>
+            </View>
+            <View style={styles.doctorBadge}>
+              <Text style={styles.doctorBadgeText}>DOCTOR</Text>
+            </View>
+            <ChevronRight size={18} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Section 3: Account Settings */}
         <View style={styles.menuGroup}>
           <TouchableOpacity
             activeOpacity={0.8}
@@ -354,6 +384,19 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSizes.micro,
     color: '#226D3C',
     fontWeight: typography.fontWeights.bold,
+  },
+  doctorBadge: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: borderRadius.pill,
+    marginRight: 8,
+  },
+  doctorBadgeText: {
+    fontSize: typography.fontSizes.micro - 1,
+    color: colors.textInverse,
+    fontWeight: typography.fontWeights.heavy,
+    letterSpacing: 0.5,
   },
   logoutBtn: {
     flexDirection: 'row',

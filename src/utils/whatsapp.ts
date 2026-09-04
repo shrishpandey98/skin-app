@@ -45,3 +45,25 @@ export async function sendWhatsAppConfirmation(payload: WhatsAppAppointmentPaylo
   }
   return false;
 }
+
+/**
+ * Opens a direct WhatsApp chat window with a patient or doctor.
+ */
+export async function openWhatsAppChat(phone: string, message: string): Promise<boolean> {
+  const cleanPhone = phone.replace(/[^0-9]/g, '');
+  const formattedPhone = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
+  const encoded = encodeURIComponent(message);
+  const url = `https://wa.me/${formattedPhone}?text=${encoded}`;
+
+  try {
+    const supported = await Linking.canOpenURL(url);
+    if (supported || Platform.OS === 'web') {
+      await Linking.openURL(url);
+      return true;
+    }
+  } catch (error) {
+    console.warn('Could not open WhatsApp chat', error);
+  }
+  return false;
+}
+

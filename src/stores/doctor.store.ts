@@ -1,0 +1,160 @@
+import { create } from 'zustand';
+import { Appointment, AppointmentStatus } from '../types/appointment.types';
+import { Procedure } from '../types/procedure.types';
+import { ClinicProcedure, Clinic } from '../types/clinic.types';
+import { Doctor } from '../types/doctor.types';
+import { MOCK_CLINICS, MOCK_DOCTORS } from '../data/mockData';
+import {
+  doctorService,
+  DoctorStats,
+  PatientSummary,
+  NewProcedurePayload,
+} from '../services/doctor.service';
+import { useAppointmentsStore } from './appointments.store';
+
+interface DoctorState {
+  activeClinic: Clinic;
+  activeDoctor: Doctor;
+  knowledgeBaseProcedures: Procedure[];
+  clinicProcedures: ClinicProcedure[];
+  stats: DoctorStats;
+  patients: PatientSummary[];
+  isDoctorMode: boolean;
+  loading: boolean;
+  error: string | null;
+
+  // Actions
+  initializeDoctorPortal: () => Promise<void>;
+  setDoctorMode: (active: boolean) => void;
+  updateAppointmentStatus: (
+    appointmentId: string,
+    status: AppointmentStatus,
+    doctorNotes?: string
+  ) => Promise<void>;
+  updateProcedurePricing: (
+    procedureId: string,
+    updates: { priceFrom?: number; priceTo?: number; priceUnit?: string; isAvailable?: boolean }
+  ) => Promise<void>;
+  addNewProcedureToKnowledgeBase: (payload: NewProcedurePayload) => Promise<void>;
+  toggleProcedureOffering: (procedure: Procedure, isOffered: boolean) => Promise<void>;
+  refreshStats: () => void;
+}
+
+export const useDoctorStore = create<DoctorState>((set, get) => ({
+  activeClinic: MOCK_CLINICS[0],
+  activeDoctor: MOCK_DOCTORS[0],
+  knowledgeBaseProcedures: [],
+  clinicProcedures: MOCK_CLINICS[0]?.procedures || [],
+  stats: {
+    todayAppointmentsCount: 0,
+    pendingCount: 0,
+    confirmedCount: 0,
+    completedCount: 0,
+    totalPatientsCount: 0,
+  },
+  patients: [],
+  isDoctorMode: false,
+  loading: false,
+  error: null,
+
+  initializeDoctorPortal: async () => {
+    set({ loading: true, error: null });
+    try {
+      const kbProcedures = await doctorService.getKnowledgeBaseProcedures();
+      const clinicProcs = await doctorService.getClinicProcedures(get().activeClinic.id);
+      const allAppointments = useAppointmentsStore.getState().appointments;
+      const patients = doctorService.getPatientDirectory(allAppointments);
+      const stats = doctorService.calculateStats(allAppointments);
+
+      set({
+        knowledgeBaseProcedures: kbProcedures,
+        clinicProcedures: clinicProcs,
+        patients,
+        stats,
+        loading: false,
+      });
+    } catch (e: any) {
+      set({ error: e?.message || 'Failed to initialize Doctor Portal', loading: false });
+    }
+  },
+
+  setDoctorMode: (active: boolean) => {
+    set({ isDoctorMode: active });
+    if (active) {
+      get().initializeDoctorPortal();
+    }
+  },
+
+  updateAppointmentStatus: async (
+    appointmentId: string,
+    status: AppointmentStatus,
+    doctorNotes?: string
+  ) => {
+    // 1. Update in customer-facing shared appointments store
+    const appointmentsStore = useAppointmentsStore.getState();
+    const currentApts = appointmentsStore.appointments;
+    const targetApt = currentApts.find((a) => a.id === appointmentId);
+
+    if (targetApt) {
+      if (status === 'cancelled') {
+        await appointmentsStore.cancelAppointment(appointmentId);
+      } else {
+        // Direct status transition (e.g. pending -> confirmed, confirmed -> completed)
+        const updatedApts = currentApts.map((apt) =>
+          apt.id === appointmentId
+            ? {
+                ...apt,
+                status,
+                notes: doctorNotes ? `${apt.notes || ''} [Doctor: ${doctorNotes}]`.trim() : apt.notes,
+                updatedAt: new Date().toISOString(),
+              }
+            : apt
+        );
+        useAppointmentsStore.setState({ appointments: updatedApts });
+      }
+    }
+
+    // 2. Re-calculate metrics & patients list
+    get().refreshStats();
+  },
+
+  updateProcedurePricing: async (procedureId, updates) => {
+    const updated = await doctorService.updateClinicProcedure(procedureId, updates);
+    if (updated) {
+      const currentProcs = get().clinicProcedures.map((cp) =>
+        cp.procedureId === procedureId || cp.id === procedureId ? { ...cp, ...updates } : cp
+      );
+      set({ clinicProcedures: currentProcs });
+    }
+  },
+
+  addNewProcedureToKnowledgeBase: async (payload: NewProcedurePayload) => {
+    set({ loading: true });
+    try {
+      const { procedure, clinicProcedure } = await doctorService.addProcedureToKnowledgeBase(
+        get().activeClinic.id,
+        payload
+      );
+      set({
+        knowledgeBaseProcedures: [procedure, ...get().knowledgeBaseProcedures],
+        clinicProcedures: [clinicProcedure, ...get().clinicProcedures],
+        loading: false,
+      });
+    } catch (e: any) {
+      set({ error: e?.message || 'Failed to add procedure', loading: false });
+    }
+  },
+
+  toggleProcedureOffering: async (procedure: Procedure, isOffered: boolean) => {
+    await doctorService.toggleProcedureOffering(get().activeClinic.id, procedure, isOffered);
+    const updatedProcs = await doctorService.getClinicProcedures(get().activeClinic.id);
+    set({ clinicProcedures: [...updatedProcs] });
+  },
+
+  refreshStats: () => {
+    const allAppointments = useAppointmentsStore.getState().appointments;
+    const patients = doctorService.getPatientDirectory(allAppointments);
+    const stats = doctorService.calculateStats(allAppointments);
+    set({ stats, patients });
+  },
+}));
