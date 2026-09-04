@@ -3,34 +3,37 @@ import { View, Text, TouchableOpacity, StyleSheet, ViewStyle } from 'react-nativ
 import {
   ChevronRight,
   Bookmark,
-  Sun,
-  Zap,
   Sparkles,
-  Wind,
-  Layers,
-  Shield,
-  Activity,
-  Smile,
-  Flame,
+  SunMedium,
+  Zap,
+  Droplets,
+  Syringe,
+  Pipette,
+  HeartPulse,
+  FlaskConical,
+  Target,
+  Bandage,
+  TrendingUp,
+  Grid,
 } from 'lucide-react-native';
 import { Procedure } from '../../types/procedure.types';
 import { colors, borderRadius, typography, shadows } from '../../constants/theme';
 import { useAuthStore } from '../../stores/auth.store';
 
-// Mapping for preview icons
+// Mapping for preview icons matching the clinical nature of each procedure
 const PROCEDURE_PREVIEW_ICONS: Record<string, { icon: any; color: string; bg: string }> = {
-  hydrafacial: { icon: Sun, color: '#AD904A', bg: '#FAF4E6' },
-  'laser-hair-removal': { icon: Zap, color: '#3E9BAA', bg: '#EAF6F8' },
-  botox: { icon: Sparkles, color: '#36536B', bg: '#EBF1F5' },
-  'dermal-fillers': { icon: Smile, color: '#8A7032', bg: '#FAF4E6' },
-  'prp-hair-treatment': { icon: Wind, color: '#D68C58', bg: '#FDF4ED' },
-  'chemical-peel': { icon: Layers, color: '#AD904A', bg: '#FAF4E6' },
-  'laser-toning': { icon: Zap, color: '#3E9BAA', bg: '#EAF6F8' },
-  'acne-scar-treatment': { icon: Activity, color: '#36536B', bg: '#EBF1F5' },
-  'pigmentation-treatment': { icon: Flame, color: '#D68C58', bg: '#FDF4ED' },
+  hydrafacial: { icon: Droplets, color: '#0284C7', bg: '#E0F2FE' },
+  'laser-hair-removal': { icon: Zap, color: '#EA580C', bg: '#FFEDD5' },
+  botox: { icon: Syringe, color: '#4F46E5', bg: '#EEF2FF' },
+  'dermal-fillers': { icon: Pipette, color: '#D97706', bg: '#FEF3C7' },
+  'prp-hair-treatment': { icon: HeartPulse, color: '#DC2626', bg: '#FEE2E2' },
+  'chemical-peel': { icon: FlaskConical, color: '#059669', bg: '#D1FAE5' },
+  'laser-toning': { icon: Target, color: '#2563EB', bg: '#DBEAFE' },
+  'acne-scar-treatment': { icon: Bandage, color: '#7C3AED', bg: '#EDE9FE' },
+  'pigmentation-treatment': { icon: SunMedium, color: '#B45309', bg: '#FEF3C7' },
   'skin-brightening': { icon: Sparkles, color: '#AD904A', bg: '#FAF4E6' },
-  'skin-tightening': { icon: Shield, color: '#36536B', bg: '#EBF1F5' },
-  microneedling: { icon: Activity, color: '#3E9BAA', bg: '#EAF6F8' },
+  'skin-tightening': { icon: TrendingUp, color: '#0891B2', bg: '#CFFAFE' },
+  microneedling: { icon: Grid, color: '#475569', bg: '#F1F5F9' },
 };
 
 interface ProcedureCardProps {

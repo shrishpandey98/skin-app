@@ -12,16 +12,19 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import {
   Sparkles,
-  Sun,
+  SunMedium,
   Zap,
-  Wind,
-  Shield,
-  Layers,
-  Activity,
+  Droplets,
+  Syringe,
+  Pipette,
+  HeartPulse,
+  FlaskConical,
+  Target,
+  Bandage,
+  TrendingUp,
+  Grid,
   CheckCircle2,
   ArrowRight,
-  Smile,
-  Flame,
 } from 'lucide-react-native';
 import { TopBar } from '../../components/ui/TopBar';
 import { SearchBar } from '../../components/ui/SearchBar';
@@ -31,91 +34,91 @@ import { MOCK_PROCEDURES, MOCK_CLINICS } from '../../data/mockData';
 import { colors, borderRadius, typography, shadows } from '../../constants/theme';
 import { analytics } from '../../services/analytics.service';
 
-// 12 Common Procedures Icon Grid Mapping (All in 1 view, no cards)
+// 12 Common Procedures with True-to-Procedure Clinical & Aesthetic Icons
 const ALL_PROCEDURES_ICONS = [
   {
     slug: 'hydrafacial',
     name: 'HydraFacial',
-    icon: Sun,
-    color: '#AD904A',
-    bg: '#FAF4E6',
+    icon: Droplets, // Deep hydration & vortex water cleansing
+    color: '#0284C7',
+    bg: '#E0F2FE',
   },
   {
     slug: 'laser-hair-removal',
     name: 'Laser Hair',
-    icon: Zap,
-    color: '#3E9BAA',
-    bg: '#EAF6F8',
+    icon: Zap, // Laser light pulses
+    color: '#EA580C',
+    bg: '#FFEDD5',
   },
   {
     slug: 'botox',
     name: 'Botox',
-    icon: Sparkles,
-    color: '#36536B',
-    bg: '#EBF1F5',
+    icon: Syringe, // Neuromodulator micro-injection
+    color: '#4F46E5',
+    bg: '#EEF2FF',
   },
   {
     slug: 'dermal-fillers',
     name: 'Fillers',
-    icon: Smile,
-    color: '#8A7032',
-    bg: '#FAF4E6',
+    icon: Pipette, // Precision micro-droplet contouring
+    color: '#D97706',
+    bg: '#FEF3C7',
   },
   {
     slug: 'prp-hair-treatment',
     name: 'PRP Hair',
-    icon: Wind,
-    color: '#D68C58',
-    bg: '#FDF4ED',
+    icon: HeartPulse, // Platelet-rich plasma & vascular stimulation
+    color: '#DC2626',
+    bg: '#FEE2E2',
   },
   {
     slug: 'chemical-peel',
     name: 'Peels',
-    icon: Layers,
-    color: '#AD904A',
-    bg: '#FAF4E6',
+    icon: FlaskConical, // Dermatological acid peeling solution
+    color: '#059669',
+    bg: '#D1FAE5',
   },
   {
     slug: 'laser-toning',
     name: 'Laser Toning',
-    icon: Zap,
-    color: '#3E9BAA',
-    bg: '#EAF6F8',
+    icon: Target, // Nd:YAG targeted pigment shattering
+    color: '#2563EB',
+    bg: '#DBEAFE',
   },
   {
     slug: 'acne-scar-treatment',
     name: 'Acne Scars',
-    icon: Activity,
-    color: '#36536B',
-    bg: '#EBF1F5',
+    icon: Bandage, // Dermal healing & scar repair
+    color: '#7C3AED',
+    bg: '#EDE9FE',
   },
   {
     slug: 'pigmentation-treatment',
     name: 'Melasma',
-    icon: Flame,
-    color: '#D68C58',
-    bg: '#FDF4ED',
+    icon: SunMedium, // Melanin / sun damage clearance
+    color: '#B45309',
+    bg: '#FEF3C7',
   },
   {
     slug: 'skin-brightening',
     name: 'Medi-Facial',
-    icon: Sparkles,
+    icon: Sparkles, // Instant luminous radiance
     color: '#AD904A',
     bg: '#FAF4E6',
   },
   {
     slug: 'skin-tightening',
     name: 'HIFU Lift',
-    icon: Shield,
-    color: '#36536B',
-    bg: '#EBF1F5',
+    icon: TrendingUp, // Non-surgical ultrasound lifting & tightening
+    color: '#0891B2',
+    bg: '#CFFAFE',
   },
   {
     slug: 'microneedling',
     name: 'Microneedling',
-    icon: Activity,
-    color: '#3E9BAA',
-    bg: '#EAF6F8',
+    icon: Grid, // Collagen induction micro-needle matrix
+    color: '#475569',
+    bg: '#F1F5F9',
   },
 ];
 
