@@ -1,6 +1,8 @@
 import { create } from 'zustand';
+import { Platform, Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserProfile } from '../types/user.types';
+import { supabase } from '../services/supabase';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -56,21 +58,33 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   loginWithGoogle: async () => {
-    const googleUser: UserProfile = {
-      id: 'usr_g_' + Date.now(),
-      name: 'Shrish Pandey',
-      email: 'shrish.pandey@gmail.com',
-      phone: '+91 98765 43210',
-      city: 'Chandigarh',
-      profileImageUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=400&auto=format&fit=crop',
-    };
-
-    set({ isAuthenticated: true, isGuest: false, hasCompletedAuth: true, user: googleUser });
     try {
-      await AsyncStorage.setItem(STORAGE_KEY_USER, JSON.stringify(googleUser));
-      await AsyncStorage.removeItem(STORAGE_KEY_GUEST);
-    } catch (e) {
-      console.warn('Failed to persist Google session', e);
+      const redirectUrl =
+        Platform.OS === 'web' && typeof window !== 'undefined'
+          ? window.location.origin
+          : 'skinapp://auth/callback';
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+          skipBrowserRedirect: Platform.OS !== 'web',
+          queryParams: {
+            prompt: 'select_account', // Forces Google to show the account picker
+          },
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (Platform.OS !== 'web' && data?.url) {
+        await Linking.openURL(data.url);
+      }
+    } catch (e: any) {
+      console.warn('Google OAuth error:', e);
+      throw e;
     }
   },
 
@@ -103,6 +117,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      // ignore
+    }
     set({ isAuthenticated: false, isGuest: false, hasCompletedAuth: false, user: null });
     try {
       await AsyncStorage.removeItem(STORAGE_KEY_USER);
@@ -152,16 +171,57 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initializeAuth: async () => {
     try {
-      const storedUser = await AsyncStorage.getItem(STORAGE_KEY_USER);
-      const isGuest = await AsyncStorage.getItem(STORAGE_KEY_GUEST);
+      // 1. Check active Supabase session (e.g. from Google OAuth callback)
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData?.session?.user) {
+        const sbUser = sessionData.session.user;
+        const profile: UserProfile = {
+          id: sbUser.id,
+          name: sbUser.user_metadata?.full_name || sbUser.user_metadata?.name || sbUser.email?.split('@')[0] || 'User',
+          email: sbUser.email || '',
+          phone: sbUser.phone || '+91 98765 43210',
+          city: 'Chandigarh',
+          profileImageUrl:
+            sbUser.user_metadata?.avatar_url ||
+            sbUser.user_metadata?.picture ||
+            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop',
+        };
+        set({ isAuthenticated: true, isGuest: false, hasCompletedAuth: true, user: profile });
+        await AsyncStorage.setItem(STORAGE_KEY_USER, JSON.stringify(profile));
+      } else {
+        // 2. Check local stored storage
+        const storedUser = await AsyncStorage.getItem(STORAGE_KEY_USER);
+        const isGuest = await AsyncStorage.getItem(STORAGE_KEY_GUEST);
+
+        if (storedUser) {
+          set({ isAuthenticated: true, isGuest: false, hasCompletedAuth: true, user: JSON.parse(storedUser) });
+        } else if (isGuest === 'true') {
+          set({ isAuthenticated: false, isGuest: true, hasCompletedAuth: true, user: null });
+        }
+      }
+
+      // 3. Listen to auth state changes (e.g. Google OAuth redirect on web)
+      supabase.auth.onAuthStateChange(async (event, session) => {
+        if (session?.user) {
+          const sbUser = session.user;
+          const profile: UserProfile = {
+            id: sbUser.id,
+            name: sbUser.user_metadata?.full_name || sbUser.user_metadata?.name || sbUser.email?.split('@')[0] || 'User',
+            email: sbUser.email || '',
+            phone: sbUser.phone || '+91 98765 43210',
+            city: 'Chandigarh',
+            profileImageUrl:
+              sbUser.user_metadata?.avatar_url ||
+              sbUser.user_metadata?.picture ||
+              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop',
+          };
+          set({ isAuthenticated: true, isGuest: false, hasCompletedAuth: true, user: profile });
+          await AsyncStorage.setItem(STORAGE_KEY_USER, JSON.stringify(profile));
+        }
+      });
+
       const storedClinics = await AsyncStorage.getItem(STORAGE_KEY_SAVED_CLINICS);
       const storedProcedures = await AsyncStorage.getItem(STORAGE_KEY_SAVED_PROCEDURES);
-
-      if (storedUser) {
-        set({ isAuthenticated: true, isGuest: false, hasCompletedAuth: true, user: JSON.parse(storedUser) });
-      } else if (isGuest === 'true') {
-        set({ isAuthenticated: false, isGuest: true, hasCompletedAuth: true, user: null });
-      }
 
       if (storedClinics) {
         set({ savedClinics: JSON.parse(storedClinics) });

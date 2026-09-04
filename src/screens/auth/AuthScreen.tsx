@@ -34,11 +34,14 @@ export const AuthScreen: React.FC = () => {
     try {
       setLoadingGoogle(true);
       setErrorMessage('');
-      // Simulate Google OAuth flow
-      await new Promise((res) => setTimeout(res, 500));
       await loginWithGoogle();
     } catch (e: any) {
-      setErrorMessage('Google Sign-In failed. Please try again.');
+      const msg = e?.message || '';
+      if (msg.toLowerCase().includes('provider is not enabled') || msg.toLowerCase().includes('unsupported provider')) {
+        setErrorMessage('Google OAuth is not yet enabled in your Supabase dashboard. Please enable Google in Supabase > Authentication > Providers, or use Email / Continue as Guest.');
+      } else {
+        setErrorMessage(msg || 'Google Sign-In failed. Please try again.');
+      }
     } finally {
       setLoadingGoogle(false);
     }
