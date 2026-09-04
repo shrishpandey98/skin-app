@@ -30,9 +30,9 @@ export const ConfirmDetailsScreen: React.FC = () => {
 
   const { user, isAuthenticated } = useAuthStore();
 
-  const [patientName, setPatientName] = useState(user?.name || 'Priya Sharma');
-  const [patientPhone, setPatientPhone] = useState(user?.phone || '+91 98765 43210');
-  const [patientEmail, setPatientEmail] = useState(user?.email || 'priya.sharma@example.com');
+  const [patientName, setPatientName] = useState(user?.name || '');
+  const [patientPhone, setPatientPhone] = useState(user?.phone || '');
+  const [patientEmail, setPatientEmail] = useState(user?.email || '');
   const [notes, setNotes] = useState('');
 
   const handleContinue = () => {
