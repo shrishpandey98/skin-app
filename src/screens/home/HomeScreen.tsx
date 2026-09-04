@@ -12,19 +12,16 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import {
   Sparkles,
-  Building2,
-  ChevronRight,
   Sun,
   Zap,
   Wind,
   Shield,
   Layers,
-  Award,
+  Activity,
   CheckCircle2,
   ArrowRight,
-  HelpCircle,
-  Activity,
-  HeartHandshake,
+  Smile,
+  Flame,
 } from 'lucide-react-native';
 import { TopBar } from '../../components/ui/TopBar';
 import { SearchBar } from '../../components/ui/SearchBar';
@@ -33,104 +30,104 @@ import { SectionHeader } from '../../components/ui/SectionHeader';
 import { MOCK_PROCEDURES, MOCK_CLINICS } from '../../data/mockData';
 import { colors, borderRadius, typography, shadows } from '../../constants/theme';
 import { analytics } from '../../services/analytics.service';
-import { Procedure } from '../../types/procedure.types';
 
-// Category icon & color mapping for icon-only display
-const PROCEDURE_ICON_MAP: Record<string, { icon: any; color: string; bg: string; benefit: string }> = {
-  hydrafacial: {
+// 12 Common Procedures Icon Grid Mapping (All in 1 view, no cards)
+const ALL_PROCEDURES_ICONS = [
+  {
+    slug: 'hydrafacial',
+    name: 'HydraFacial',
     icon: Sun,
     color: '#AD904A',
     bg: '#FAF4E6',
-    benefit: 'Instant Glow • 45 min',
   },
-  'laser-hair-removal': {
+  {
+    slug: 'laser-hair-removal',
+    name: 'Laser Hair',
     icon: Zap,
     color: '#3E9BAA',
     bg: '#EAF6F8',
-    benefit: 'Painless • 6-8 sittings',
   },
-  botox: {
+  {
+    slug: 'botox',
+    name: 'Botox',
     icon: Sparkles,
     color: '#36536B',
     bg: '#EBF1F5',
-    benefit: 'Wrinkle Smoothing • 15 min',
   },
-  'prp-hair-treatment': {
+  {
+    slug: 'dermal-fillers',
+    name: 'Fillers',
+    icon: Smile,
+    color: '#8A7032',
+    bg: '#FAF4E6',
+  },
+  {
+    slug: 'prp-hair-treatment',
+    name: 'PRP Hair',
     icon: Wind,
     color: '#D68C58',
     bg: '#FDF4ED',
-    benefit: 'Follicle Growth • 4-6 sittings',
   },
-  'chemical-peel': {
+  {
+    slug: 'chemical-peel',
+    name: 'Peels',
     icon: Layers,
-    color: '#8A7032',
+    color: '#AD904A',
     bg: '#FAF4E6',
-    benefit: 'Acne & Tan Clearance • 30 min',
   },
-  'laser-toning': {
+  {
+    slug: 'laser-toning',
+    name: 'Laser Toning',
     icon: Zap,
     color: '#3E9BAA',
     bg: '#EAF6F8',
-    benefit: 'Melasma & Brightening • 20 min',
   },
-  'skin-tightening': {
-    icon: Shield,
-    color: '#AD904A',
-    bg: '#FAF4E6',
-    benefit: 'HIFU Face Lift • Single session',
-  },
-  'dermal-fillers': {
-    icon: Sparkles,
-    color: '#36536B',
-    bg: '#EBF1F5',
-    benefit: 'Volume & Lip Plump • 30 min',
-  },
-  'acne-scar-treatment': {
+  {
+    slug: 'acne-scar-treatment',
+    name: 'Acne Scars',
     icon: Activity,
     color: '#36536B',
     bg: '#EBF1F5',
-    benefit: 'Fractional CO2 • Permanent',
   },
-  'skin-brightening': {
-    icon: Sun,
-    color: '#AD904A',
-    bg: '#FAF4E6',
-    benefit: 'Medi-Facial Glow • 45 min',
-  },
-  'pigmentation-treatment': {
-    icon: Layers,
+  {
+    slug: 'pigmentation-treatment',
+    name: 'Melasma',
+    icon: Flame,
     color: '#D68C58',
     bg: '#FDF4ED',
-    benefit: 'Dark Spot Fade • 3-5 sittings',
   },
-  microneedling: {
+  {
+    slug: 'skin-brightening',
+    name: 'Medi-Facial',
+    icon: Sparkles,
+    color: '#AD904A',
+    bg: '#FAF4E6',
+  },
+  {
+    slug: 'skin-tightening',
+    name: 'HIFU Lift',
+    icon: Shield,
+    color: '#36536B',
+    bg: '#EBF1F5',
+  },
+  {
+    slug: 'microneedling',
+    name: 'Microneedling',
     icon: Activity,
     color: '#3E9BAA',
     bg: '#EAF6F8',
-    benefit: 'Collagen Renewal • 40 min',
   },
-};
-
-const PROCEDURE_QUICK_FILTERS = [
-  { id: 'all', label: 'All Treatments' },
-  { id: 'skin', label: 'Skin Glow' },
-  { id: 'laser', label: 'Laser' },
-  { id: 'injectables', label: 'Botox & Fillers' },
-  { id: 'hair', label: 'Hair PRP' },
-  { id: 'anti_ageing', label: 'Anti-Ageing' },
 ];
 
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const [selectedFilter, setSelectedFilter] = React.useState('all');
 
-  // Animation for Highlighting "Not Sure..."
+  // Continuous animated highlight pulse for "Not Sure..."
   const pulseAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     analytics.track('app_opened');
 
-    // Continuous breathing / glowing pulse animation for "Not Sure..."
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
@@ -151,12 +148,8 @@ export const HomeScreen: React.FC = () => {
     navigation.navigate('SearchResultsModal');
   };
 
-  const handleExploreProcedures = (category?: string) => {
-    if (category && category !== 'all') {
-      navigation.navigate('ProceduresTab', { initialCategory: category });
-    } else {
-      navigation.navigate('ProceduresTab');
-    }
+  const handleExploreProcedures = () => {
+    navigation.navigate('ProceduresTab');
   };
 
   const handleFindClinics = () => {
@@ -177,11 +170,6 @@ export const HomeScreen: React.FC = () => {
     analytics.track('clinic_viewed', { slug, name });
     navigation.navigate('ClinicDetailModal', { clinicSlug: slug });
   };
-
-  const filteredProcedures =
-    selectedFilter === 'all'
-      ? MOCK_PROCEDURES
-      : MOCK_PROCEDURES.filter((p) => p.category === selectedFilter);
 
   // Animated interpolations for the highlighted "Not Sure" box
   const animatedBorderColor = pulseAnim.interpolate({
@@ -230,99 +218,35 @@ export const HomeScreen: React.FC = () => {
         </View>
 
         {/* ─────────────────────────────────────────────────────────────
-            1. COMMON PROCEDURES (ICON-ONLY, NO PHOTOS)
+            1. ALL COMMON PROCEDURES (1-VIEW ICON GRID, NO CARDS)
            ───────────────────────────────────────────────────────────── */}
-        <View style={styles.section}>
+        <View style={styles.proceduresSection}>
           <SectionHeader
             title="Common Procedures"
-            actionText="See All (12+)"
-            onActionPress={() => handleExploreProcedures()}
+            actionText="Explore (12)"
+            onActionPress={handleExploreProcedures}
           />
 
-          {/* Quick Filter Pills */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filterScroll}
-          >
-            {PROCEDURE_QUICK_FILTERS.map((cat) => {
-              const isActive = selectedFilter === cat.id;
+          <View style={styles.iconGrid}>
+            {ALL_PROCEDURES_ICONS.map((proc) => {
+              const IconComp = proc.icon;
               return (
                 <TouchableOpacity
-                  key={cat.id}
+                  key={proc.slug}
                   activeOpacity={0.75}
-                  onPress={() => setSelectedFilter(cat.id)}
-                  style={[
-                    styles.filterPill,
-                    isActive ? styles.filterPillActive : styles.filterPillInactive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.filterPillText,
-                      isActive ? styles.filterPillTextActive : styles.filterPillTextInactive,
-                    ]}
-                  >
-                    {cat.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          {/* Icon-Only Procedure Cards Carousel */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.horizontalScroll}
-          >
-            {filteredProcedures.slice(0, 8).map((proc) => {
-              const meta = PROCEDURE_ICON_MAP[proc.slug] || {
-                icon: Sparkles,
-                color: colors.primary,
-                bg: colors.primaryLight,
-                benefit: 'Clinical Dermatology',
-              };
-              const IconComp = meta.icon;
-
-              return (
-                <TouchableOpacity
-                  key={proc.id}
-                  activeOpacity={0.85}
                   onPress={() => handleProcedurePress(proc.slug, proc.name)}
-                  style={[styles.iconProcCard, shadows.card]}
+                  style={styles.iconGridItem}
                 >
-                  {/* Icon Circle */}
-                  <View style={[styles.iconProcCircle, { backgroundColor: meta.bg }]}>
-                    <IconComp size={24} color={meta.color} />
+                  <View style={[styles.iconCircle, { backgroundColor: proc.bg }]}>
+                    <IconComp size={22} color={proc.color} />
                   </View>
-
-                  {/* Category Chip */}
-                  <View style={styles.iconProcCatBadge}>
-                    <Text style={styles.iconProcCatText}>
-                      {proc.categoryLabel || proc.category.toUpperCase()}
-                    </Text>
-                  </View>
-
-                  {/* Title */}
-                  <Text style={styles.iconProcTitle} numberOfLines={1}>
+                  <Text style={styles.iconLabel} numberOfLines={2}>
                     {proc.name}
                   </Text>
-
-                  {/* Benefit / Sessions Info */}
-                  <Text style={styles.iconProcBenefit} numberOfLines={1}>
-                    {meta.benefit}
-                  </Text>
-
-                  {/* Bottom Action */}
-                  <View style={styles.iconProcFooter}>
-                    <Text style={styles.iconProcFooterText}>View Details</Text>
-                    <ChevronRight size={14} color={colors.primary} />
-                  </View>
                 </TouchableOpacity>
               );
             })}
-          </ScrollView>
+          </View>
         </View>
 
         {/* ─────────────────────────────────────────────────────────────
@@ -375,7 +299,7 @@ export const HomeScreen: React.FC = () => {
         {/* ─────────────────────────────────────────────────────────────
             3. TOP VERIFIED CLINICS
            ───────────────────────────────────────────────────────────── */}
-        <View style={styles.section}>
+        <View style={styles.clinicsSection}>
           <SectionHeader
             title="Top Verified Clinics"
             actionText="View All"
@@ -451,109 +375,49 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   searchBar: {
-    marginBottom: 6,
-  },
-
-  // Sections
-  section: {
-    marginTop: 18,
-    paddingLeft: 20,
-  },
-  filterScroll: {
-    paddingRight: 20,
-    gap: 8,
-    marginBottom: 12,
-  },
-  filterPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: borderRadius.pill,
-    borderWidth: 1,
-  },
-  filterPillActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  filterPillInactive: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-  },
-  filterPillText: {
-    fontSize: typography.fontSizes.caption,
-    fontWeight: typography.fontWeights.semibold,
-  },
-  filterPillTextActive: {
-    color: colors.textInverse,
-  },
-  filterPillTextInactive: {
-    color: colors.textSecondary,
-  },
-  horizontalScroll: {
-    paddingRight: 20,
-    paddingTop: 2,
-    paddingBottom: 6,
-  },
-
-  // ─────────────────────────────────────────────────────────────
-  // 1. ICON-ONLY PROCEDURE CARDS
-  // ─────────────────────────────────────────────────────────────
-  iconProcCard: {
-    width: 175,
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: 14,
-    marginRight: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    justifyContent: 'space-between',
-  },
-  iconProcCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  iconProcCatBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.surfaceSubtle,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: borderRadius.sm,
-    marginBottom: 6,
-  },
-  iconProcCatText: {
-    fontSize: typography.fontSizes.micro,
-    fontWeight: typography.fontWeights.semibold,
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
-  },
-  iconProcTitle: {
-    fontSize: typography.fontSizes.body - 0.5,
-    fontWeight: typography.fontWeights.bold,
-    color: colors.text,
     marginBottom: 4,
   },
-  iconProcBenefit: {
-    fontSize: typography.fontSizes.micro + 0.5,
-    color: colors.textMuted,
-    lineHeight: 15,
-    marginBottom: 10,
+
+  // ─────────────────────────────────────────────────────────────
+  // 1. ALL PROCEDURES 1-VIEW ICON GRID (NO CARDS)
+  // ─────────────────────────────────────────────────────────────
+  proceduresSection: {
+    marginTop: 14,
+    paddingHorizontal: 20,
   },
-  iconProcFooter: {
+  iconGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: colors.surfaceSubtle,
-    paddingTop: 8,
+    rowGap: 14,
+    marginTop: 6,
+    paddingVertical: 4,
   },
-  iconProcFooterText: {
-    fontSize: typography.fontSizes.caption - 1,
-    fontWeight: typography.fontWeights.bold,
-    color: colors.primary,
+  iconGridItem: {
+    width: '23%', // 4 items per row in 1 clean cohesive view
+    alignItems: 'center',
+  },
+  iconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  iconLabel: {
+    fontSize: typography.fontSizes.micro + 0.5,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.text,
+    textAlign: 'center',
+    lineHeight: 14,
   },
 
   // ─────────────────────────────────────────────────────────────
@@ -618,6 +482,19 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSizes.body - 1,
     fontWeight: typography.fontWeights.bold,
     letterSpacing: 0.2,
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // 3. TOP VERIFIED CLINICS
+  // ─────────────────────────────────────────────────────────────
+  clinicsSection: {
+    marginTop: 18,
+    paddingLeft: 20,
+  },
+  horizontalScroll: {
+    paddingRight: 20,
+    paddingTop: 2,
+    paddingBottom: 6,
   },
 
   // Trust Strip
