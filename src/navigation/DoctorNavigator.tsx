@@ -45,13 +45,18 @@ const DoctorTabs: React.FC = () => {
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
-          height: 62,
-          paddingBottom: 8,
-          paddingTop: 8,
+          borderTopWidth: 1,
+          height: Platform.OS === 'ios' ? 84 : 68,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 10,
+          paddingTop: 6,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 2,
         },
         tabBarLabelStyle: {
           fontSize: typography.fontSizes.micro + 0.5,
           fontWeight: typography.fontWeights.semibold,
+          marginBottom: 2,
         },
       }}
     >
@@ -60,7 +65,7 @@ const DoctorTabs: React.FC = () => {
         component={QueueStack}
         options={{
           tabBarLabel: 'Appointments',
-          tabBarIcon: ({ color, size }) => <Calendar size={size - 2} color={color} />,
+          tabBarIcon: ({ color, size }) => <Calendar size={20} color={color} />,
         }}
       />
       <Tab.Screen
@@ -68,7 +73,7 @@ const DoctorTabs: React.FC = () => {
         component={ProceduresStack}
         options={{
           tabBarLabel: 'Procedures',
-          tabBarIcon: ({ color, size }) => <Sparkles size={size - 2} color={color} />,
+          tabBarIcon: ({ color, size }) => <Sparkles size={20} color={color} />,
         }}
       />
       <Tab.Screen
@@ -76,7 +81,7 @@ const DoctorTabs: React.FC = () => {
         component={ClinicStack}
         options={{
           tabBarLabel: 'Clinic',
-          tabBarIcon: ({ color, size }) => <Building2 size={size - 2} color={color} />,
+          tabBarIcon: ({ color, size }) => <Building2 size={20} color={color} />,
         }}
       />
     </Tab.Navigator>
