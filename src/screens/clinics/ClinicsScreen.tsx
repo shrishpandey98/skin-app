@@ -7,6 +7,7 @@ import {
   SafeAreaView,
   ScrollView,
   StatusBar,
+  RefreshControl,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { TopBar } from '../../components/ui/TopBar';
@@ -35,6 +36,7 @@ export const ClinicsScreen: React.FC = () => {
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadClinics();
@@ -49,6 +51,17 @@ export const ClinicsScreen: React.FC = () => {
     const data = await clinicsService.getAllClinics(filters);
     setClinics(data);
     setLoading(false);
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    const filters: ClinicFilters = {
+      verifiedOnly,
+      sortBy: selectedSort,
+    };
+    const data = await clinicsService.getAllClinics(filters);
+    setClinics(data);
+    setRefreshing(false);
   };
 
   const filteredClinics = clinics.filter((c) => {
@@ -80,7 +93,7 @@ export const ClinicsScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-      <TopBar />
+      <TopBar onRefresh={handleRefresh} />
 
       <View style={styles.header}>
         <Text style={styles.title}>Aesthetic Clinics</Text>
@@ -124,6 +137,9 @@ export const ClinicsScreen: React.FC = () => {
       <FlatList
         data={filteredClinics}
         keyExtractor={(item) => item.id}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
         renderItem={({ item }) => (
           <ClinicCard
             clinic={item}

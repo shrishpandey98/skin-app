@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import {
@@ -24,6 +25,7 @@ import {
   Edit2,
   X,
   Database,
+  RefreshCw,
 } from 'lucide-react-native';
 import { useDoctorStore } from '../../stores/doctor.store';
 import { Procedure, ProcedureCategory } from '../../types/procedure.types';
@@ -132,20 +134,33 @@ export const DoctorProceduresScreen: React.FC = () => {
           </Text>
         </View>
 
-        <TouchableOpacity
-          activeOpacity={0.88}
-          onPress={() => setShowAddModal(true)}
-          style={[styles.addBtn, shadows.subtle]}
-        >
-          <Plus size={16} color={colors.textInverse} />
-          <Text style={styles.addBtnText}>Add Procedure</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={initializeDoctorPortal}
+            style={[styles.refreshIconBtn, shadows.subtle]}
+          >
+            <RefreshCw size={15} color={colors.primaryDark} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.88}
+            onPress={() => setShowAddModal(true)}
+            style={[styles.addBtn, shadows.subtle]}
+          >
+            <Plus size={16} color={colors.textInverse} />
+            <Text style={styles.addBtnText}>Add Procedure</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={initializeDoctorPortal} />
+        }
       >
         {/* Search */}
         <View style={[styles.searchBox, shadows.subtle]}>
@@ -412,6 +427,21 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSizes.caption - 1,
     color: colors.textSecondary,
     marginTop: 2,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  refreshIconBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: borderRadius.pill,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   addBtn: {
     flexDirection: 'row',

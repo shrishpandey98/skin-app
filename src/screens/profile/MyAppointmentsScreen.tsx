@@ -8,14 +8,15 @@ import {
   SafeAreaView,
   StatusBar,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { ArrowLeft, Calendar } from 'lucide-react-native';
+import { ArrowLeft, Calendar, RefreshCw } from 'lucide-react-native';
 import { BookingCard } from '../../components/cards/BookingCard';
 import { EmptyState } from '../../components/states/EmptyState';
 import { useAppointmentsStore } from '../../stores/appointments.store';
 import { Appointment } from '../../types/appointment.types';
-import { colors, borderRadius, typography } from '../../constants/theme';
+import { colors, borderRadius, typography, shadows } from '../../constants/theme';
 
 export const MyAppointmentsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -24,6 +25,7 @@ export const MyAppointmentsScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'cancelled'>(
     route.params?.initialTab || 'upcoming'
   );
+  const [refreshing, setRefreshing] = useState(false);
 
   const {
     getUpcomingAppointments,
@@ -31,7 +33,14 @@ export const MyAppointmentsScreen: React.FC = () => {
     getCancelledAppointments,
     cancelAppointment,
     rescheduleAppointment,
+    initializeAppointments,
   } = useAppointmentsStore();
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await initializeAppointments();
+    setRefreshing(false);
+  };
 
   const appointments =
     activeTab === 'upcoming'
@@ -93,7 +102,14 @@ export const MyAppointmentsScreen: React.FC = () => {
           <ArrowLeft size={20} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Appointments</Text>
-        <View style={styles.placeholder} />
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={handleRefresh}
+          disabled={refreshing}
+          style={styles.refreshBtn}
+        >
+          <RefreshCw size={18} color={colors.primaryDark} />
+        </TouchableOpacity>
       </View>
 
       {/* Tab Switcher */}
@@ -139,6 +155,9 @@ export const MyAppointmentsScreen: React.FC = () => {
       <FlatList
         data={appointments}
         keyExtractor={(item) => item.id}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
         renderItem={({ item }) => (
           <BookingCard
             appointment={item}
@@ -161,15 +180,11 @@ export const MyAppointmentsScreen: React.FC = () => {
             }
             description={
               activeTab === 'upcoming'
-                ? 'Explore top aesthetic clinics in Chandigarh and book your consultation.'
-                : 'Your consultation history will appear here once visits are completed.'
+                ? 'You have no scheduled appointments. Explore clinics to book your consultation.'
+                : 'Your appointment history will appear here.'
             }
-            actionText={activeTab === 'upcoming' ? 'Find a Clinic' : undefined}
-            onActionPress={
-              activeTab === 'upcoming'
-                ? () => navigation.getParent()?.navigate('MainTabs', { screen: 'ClinicsTab' })
-                : undefined
-            }
+            actionText="Explore Clinics"
+            onActionPress={() => navigation.navigate('MainTabs', { screen: 'ClinicsTab' })}
           />
         }
       />
@@ -199,8 +214,12 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeights.bold,
     color: colors.text,
   },
-  placeholder: {
+  refreshBtn: {
     width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tabContainer: {
     flexDirection: 'row',

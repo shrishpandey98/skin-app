@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import {
@@ -31,6 +32,7 @@ import {
   Pencil,
   Trash2,
   Check,
+  RefreshCw,
 } from 'lucide-react-native';
 import { useDoctorStore } from '../../stores/doctor.store';
 import { colors, borderRadius, typography, shadows } from '../../constants/theme';
@@ -51,6 +53,8 @@ export const DoctorSettingsScreen: React.FC = () => {
     updateClinicProfile,
     updateUserProfile,
     updateOperatingHours,
+    initializeDoctorPortal,
+    loading,
   } = useDoctorStore();
 
   // 1. Add Doctor Modal State
@@ -343,20 +347,35 @@ export const DoctorSettingsScreen: React.FC = () => {
           <Text style={styles.headerTitle}>Clinic Profile & Settings</Text>
           <Text style={styles.headerSubtitle}>{activeClinic.name || 'Manage Your Clinic'}</Text>
         </View>
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={handleLogout}
-          style={styles.headerLogoutBtn}
-        >
-          <LogOut size={15} color="#D32F2F" />
-          <Text style={styles.headerLogoutText}>Sign Out</Text>
-        </TouchableOpacity>
+
+        <View style={styles.headerRightActions}>
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={initializeDoctorPortal}
+            style={[styles.headerRefreshBtn, shadows.subtle]}
+          >
+            <RefreshCw size={14} color={colors.primaryDark} />
+            <Text style={styles.headerRefreshText}>Refresh</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={handleLogout}
+            style={styles.headerLogoutBtn}
+          >
+            <LogOut size={15} color="#D32F2F" />
+            <Text style={styles.headerLogoutText}>Sign Out</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={initializeDoctorPortal} />
+        }
       >
         {/* Marketplace Discovery Toggle Card */}
         <View
@@ -1263,6 +1282,27 @@ const styles = StyleSheet.create({
   },
   headerLeft: {
     flex: 1,
+  },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerRefreshBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  headerRefreshText: {
+    fontSize: typography.fontSizes.caption,
+    color: colors.primaryDark,
+    fontWeight: typography.fontWeights.bold,
   },
   headerLogoutBtn: {
     flexDirection: 'row',

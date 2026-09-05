@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   StatusBar,
   Animated,
+  RefreshControl,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import {
@@ -33,6 +34,8 @@ import { SectionHeader } from '../../components/ui/SectionHeader';
 import { MOCK_PROCEDURES, MOCK_CLINICS } from '../../data/mockData';
 import { colors, borderRadius, typography, shadows } from '../../constants/theme';
 import { analytics } from '../../services/analytics.service';
+import { proceduresService } from '../../services/procedures.service';
+import { useAppointmentsStore } from '../../stores/appointments.store';
 
 // 12 Common Procedures with True-to-Procedure Clinical & Aesthetic Icons
 const ALL_PROCEDURES_ICONS = [
@@ -195,15 +198,34 @@ export const HomeScreen: React.FC = () => {
     outputRange: [0.85, 1, 0.85],
   });
 
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.allSettled([
+        proceduresService.refreshLiveProcedures(),
+        useAppointmentsStore.getState().initializeAppointments(),
+      ]);
+    } catch (e) {
+      console.warn('Home refresh error', e);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-      <TopBar />
+      <TopBar onRefresh={handleRefresh} />
 
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
       >
         {/* Search Header */}
         <View style={styles.heroSection}>

@@ -1,18 +1,56 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { MapPin, ChevronDown, Bell, User, Sparkles } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { MapPin, ChevronDown, Bell, User, Sparkles, RefreshCw } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors, borderRadius, typography, shadows } from '../../constants/theme';
 import { useLocationStore } from '../../stores/location.store';
+import { useAppointmentsStore } from '../../stores/appointments.store';
+import { proceduresService } from '../../services/procedures.service';
+import { useDoctorStore } from '../../stores/doctor.store';
 
 interface TopBarProps {
   showLocation?: boolean;
   title?: string;
+  onRefresh?: () => Promise<void> | void;
 }
 
-export const TopBar: React.FC<TopBarProps> = ({ showLocation = true, title }) => {
+export const TopBar: React.FC<TopBarProps> = ({ showLocation = true, title, onRefresh }) => {
   const navigation = useNavigation<any>();
   const { selectedCity } = useLocationStore();
+  const { initializeAppointments } = useAppointmentsStore();
+  const { initializeDoctorPortal } = useDoctorStore();
+
+  const [refreshing, setRefreshing] = useState(false);
+  const spinValue = React.useRef(new Animated.Value(0)).current;
+
+  const handleManualRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+
+    Animated.timing(spinValue, {
+      toValue: 1,
+      duration: 700,
+      useNativeDriver: true,
+    }).start(() => spinValue.setValue(0));
+
+    try {
+      await Promise.allSettled([
+        proceduresService.refreshLiveProcedures(),
+        initializeAppointments(),
+        initializeDoctorPortal(),
+        onRefresh ? onRefresh() : Promise.resolve(),
+      ]);
+    } catch (e) {
+      console.warn('Manual refresh error:', e);
+    } finally {
+      setTimeout(() => setRefreshing(false), 300);
+    }
+  };
+
+  const spin = spinValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
 
   const handleHomePress = () => {
     navigation.navigate('MainTabs', { screen: 'HomeTab' });
@@ -66,8 +104,19 @@ export const TopBar: React.FC<TopBarProps> = ({ showLocation = true, title }) =>
         )}
       </View>
 
-      {/* Right Action Icons (Notifications & Profile) */}
+      {/* Right Action Icons (Refresh, Notifications & Profile) */}
       <View style={styles.actionsRow}>
+        <TouchableOpacity
+          activeOpacity={0.75}
+          onPress={handleManualRefresh}
+          disabled={refreshing}
+          style={[styles.iconButton, shadows.subtle]}
+        >
+          <Animated.View style={{ transform: [{ rotate: spin }] }}>
+            <RefreshCw size={16} color={refreshing ? colors.primary : colors.text} />
+          </Animated.View>
+        </TouchableOpacity>
+
         <TouchableOpacity
           activeOpacity={0.75}
           onPress={handleNotificationsPress}

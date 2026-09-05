@@ -18,6 +18,7 @@ import {
   ArrowRight,
   Sparkles,
   Building2,
+  RefreshCw,
 } from 'lucide-react-native';
 import { useDoctorStore } from '../../stores/doctor.store';
 import { useAppointmentsStore } from '../../stores/appointments.store';
@@ -94,6 +95,14 @@ export const DoctorScheduleScreen: React.FC = () => {
           </Text>
           <Text style={styles.headerSubtitle}>Clinic Portal</Text>
         </View>
+        <TouchableOpacity
+          activeOpacity={0.75}
+          onPress={initializeDoctorPortal}
+          style={[styles.headerRefreshBtn, shadows.subtle]}
+        >
+          <RefreshCw size={15} color={colors.primary} />
+          <Text style={styles.headerRefreshText}>Refresh</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -595,5 +604,21 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 4,
+  },
+  headerRefreshBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: borderRadius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 5,
+  },
+  headerRefreshText: {
+    fontSize: typography.fontSizes.micro + 0.5,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.primaryDark,
   },
 });

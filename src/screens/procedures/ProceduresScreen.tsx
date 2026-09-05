@@ -7,6 +7,7 @@ import {
   SafeAreaView,
   ScrollView,
   StatusBar,
+  RefreshControl,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { TopBar } from '../../components/ui/TopBar';
@@ -31,6 +32,7 @@ export const ProceduresScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [procedures, setProcedures] = useState<Procedure[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (route.params?.initialCategory) {
@@ -42,11 +44,17 @@ export const ProceduresScreen: React.FC = () => {
     loadProcedures();
   }, [selectedCategory]);
 
-  const loadProcedures = async () => {
-    setLoading(true);
-    const data = await proceduresService.getAllProcedures(selectedCategory);
+  const loadProcedures = async (force: boolean = false) => {
+    if (!force) setLoading(true);
+    const data = await proceduresService.getAllProcedures(selectedCategory, force);
     setProcedures(data);
     setLoading(false);
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadProcedures(true);
+    setRefreshing(false);
   };
 
   const filteredProcedures = procedures.filter((p) => {
@@ -67,7 +75,7 @@ export const ProceduresScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-      <TopBar />
+      <TopBar onRefresh={handleRefresh} />
 
       <View style={styles.header}>
         <Text style={styles.title}>Explore Procedures</Text>
@@ -106,6 +114,9 @@ export const ProceduresScreen: React.FC = () => {
       <FlatList
         data={filteredProcedures}
         keyExtractor={(item) => item.id}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
         renderItem={({ item }) => (
           <ProcedureCard
             procedure={item}
