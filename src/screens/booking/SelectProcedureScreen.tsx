@@ -40,7 +40,12 @@ export const SelectProcedureScreen: React.FC = () => {
     navigation.navigate('SelectDateTime', {
       clinicSlug,
       doctorSlug,
-      procedureSlug: procSlug !== undefined ? procSlug : selectedProcedureSlug,
+      procedureSlug:
+        procSlug !== undefined
+          ? procSlug
+          : selectedProcedureSlug === 'general'
+          ? null
+          : selectedProcedureSlug,
     });
   };
 
@@ -79,10 +84,10 @@ export const SelectProcedureScreen: React.FC = () => {
         {/* General Consultation Option */}
         <TouchableOpacity
           activeOpacity={0.85}
-          onPress={() => setSelectedProcedureSlug(null)}
+          onPress={() => setSelectedProcedureSlug(selectedProcedureSlug === 'general' ? null : 'general')}
           style={[
             styles.generalCard,
-            selectedProcedureSlug === null ? styles.cardSelected : styles.cardUnselected,
+            selectedProcedureSlug === 'general' ? styles.cardSelected : styles.cardUnselected,
             shadows.subtle,
           ]}
         >
@@ -95,7 +100,7 @@ export const SelectProcedureScreen: React.FC = () => {
               Meet the doctor for clinical skin assessment & tailored treatment plan.
             </Text>
           </View>
-          {selectedProcedureSlug === null ? (
+          {selectedProcedureSlug === 'general' ? (
             <CheckCircle2 size={20} color={colors.primary} />
           ) : null}
         </TouchableOpacity>
@@ -107,6 +112,7 @@ export const SelectProcedureScreen: React.FC = () => {
           {clinic?.procedures?.map((proc) => {
             const isSelected =
               selectedProcedureSlug === proc.procedureId ||
+              selectedProcedureSlug === proc.id ||
               selectedProcedureSlug === proc.id.replace(/^cp_[a-z]+_/, '').replace(/_/g, '-');
 
             const procTitle = proc.id
@@ -118,7 +124,7 @@ export const SelectProcedureScreen: React.FC = () => {
               <TouchableOpacity
                 key={proc.id}
                 activeOpacity={0.88}
-                onPress={() => setSelectedProcedureSlug(proc.procedureId)}
+                onPress={() => setSelectedProcedureSlug(isSelected ? null : proc.procedureId)}
                 style={[
                   styles.procCard,
                   isSelected ? styles.cardSelected : styles.cardUnselected,

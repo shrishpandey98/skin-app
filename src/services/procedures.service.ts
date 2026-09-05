@@ -1,25 +1,19 @@
-import { MOCK_PROCEDURES, MOCK_CLINICS } from '../data/mockData';
+import { MOCK_CLINICS } from '../data/mockData';
 import { Procedure } from '../types/procedure.types';
 import { ClinicOfferingProcedure } from '../types/clinic.types';
+import { procedureKnowledgeBaseService } from './procedureKnowledgeBase.service';
 
 export const proceduresService = {
-  getAllProcedures: async (category?: string): Promise<Procedure[]> => {
-    // Simulated network delay
-    await new Promise((r) => setTimeout(r, 100));
-    if (!category || category === 'all') {
-      return MOCK_PROCEDURES;
-    }
-    return MOCK_PROCEDURES.filter((p) => p.category === category);
+  getAllProcedures: async (category?: string, forceRefresh: boolean = false): Promise<Procedure[]> => {
+    return procedureKnowledgeBaseService.getAllProcedures(category, forceRefresh);
   },
 
   getProcedureBySlug: async (slug: string): Promise<Procedure | null> => {
-    await new Promise((r) => setTimeout(r, 80));
-    return MOCK_PROCEDURES.find((p) => p.slug === slug || p.id === slug) || null;
+    return procedureKnowledgeBaseService.getProcedureBySlug(slug);
   },
 
   getClinicsOfferingProcedure: async (procedureSlug: string): Promise<ClinicOfferingProcedure[]> => {
-    await new Promise((r) => setTimeout(r, 100));
-    const procedure = MOCK_PROCEDURES.find((p) => p.slug === procedureSlug || p.id === procedureSlug);
+    const procedure = await procedureKnowledgeBaseService.getProcedureBySlug(procedureSlug);
     if (!procedure) return [];
 
     const results: ClinicOfferingProcedure[] = [];
@@ -40,6 +34,15 @@ export const proceduresService = {
   },
 
   getRelatedProcedures: async (relatedSlugs: string[]): Promise<Procedure[]> => {
-    return MOCK_PROCEDURES.filter((p) => relatedSlugs.includes(p.slug));
+    const all = await procedureKnowledgeBaseService.getAllProcedures();
+    return all.filter((p) => relatedSlugs.includes(p.slug) || relatedSlugs.includes(p.id));
+  },
+
+  getCategories: async () => {
+    return procedureKnowledgeBaseService.getCategories();
+  },
+
+  refreshLiveProcedures: async (): Promise<Procedure[]> => {
+    return procedureKnowledgeBaseService.fetchLiveSheet(true);
   },
 };

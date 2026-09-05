@@ -79,7 +79,7 @@ export const DoctorAppointmentsScreen: React.FC = () => {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Appointments Queue</Text>
         <Text style={styles.headerSubtitle}>
-          {appointments.length} Total Bookings • {activeClinic.name}
+          {appointments.length} Total Bookings • {activeClinic.name || 'Your Clinic'}
         </Text>
       </View>
 
@@ -90,7 +90,7 @@ export const DoctorAppointmentsScreen: React.FC = () => {
             <Search size={18} color={colors.textMuted} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search by patient name, phone, or treatment..."
+              placeholder="Search by patient name, phone, or procedure..."
               placeholderTextColor={colors.textMuted}
               value={searchQuery}
               onChangeText={setSearchQuery}

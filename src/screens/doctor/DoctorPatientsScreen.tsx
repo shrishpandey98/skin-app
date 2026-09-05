@@ -115,7 +115,7 @@ export const DoctorPatientsScreen: React.FC = () => {
                     </View>
                   </View>
 
-                  {/* Treatment History Summary */}
+                  {/* Procedure History Summary */}
                   <View style={styles.historyRow}>
                     <Calendar size={13} color={colors.textSecondary} />
                     <Text style={styles.historyText}>
@@ -133,7 +133,7 @@ export const DoctorPatientsScreen: React.FC = () => {
                       onPress={() =>
                         openWhatsAppChat(
                           patient.phone,
-                          `Hello ${patient.name}, Dr. Purva's Skin & Laser Clinic reaching out to check on your post-treatment care.`
+                          `Hello ${patient.name}, ${activeClinic.name || 'our clinic'} reaching out to check on your post-procedure care.`
                         )
                       }
                       style={styles.actionBtn}

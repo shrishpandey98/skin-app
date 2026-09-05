@@ -13,7 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Sparkles, Mail, Lock, User, Eye, EyeOff, ArrowRight, ShieldCheck } from 'lucide-react-native';
+import { Sparkles, Mail, Lock, User, Eye, EyeOff } from 'lucide-react-native';
 import { useAuthStore } from '../../stores/auth.store';
 import { colors, borderRadius, typography, shadows } from '../../constants/theme';
 import { FloatingBackButton } from '../../components/ui/FloatingBackButton';
@@ -65,14 +65,15 @@ export const AuthScreen: React.FC = () => {
     try {
       setLoadingAuth(true);
       setErrorMessage('');
-      await new Promise((res) => setTimeout(res, 400));
+      await new Promise((res) => setTimeout(res, 300));
       await loginWithCredentials(
         usernameOrEmail.trim(),
         password.trim(),
-        mode === 'signup' ? fullName.trim() : undefined
+        mode === 'signup' ? fullName.trim() : undefined,
+        mode
       );
     } catch (e: any) {
-      setErrorMessage('Authentication failed. Please check credentials.');
+      setErrorMessage(e?.message || 'Authentication failed. Please check credentials.');
     } finally {
       setLoadingAuth(false);
     }
@@ -151,7 +152,7 @@ export const AuthScreen: React.FC = () => {
                   <User size={18} color={colors.primary} />
                   <TextInput
                     style={styles.textInput}
-                    placeholder="Dr. / Ms. / Mr. Name"
+                    placeholder="Ms. / Mr. Name"
                     placeholderTextColor={colors.textMuted}
                     value={fullName}
                     onChangeText={setFullName}
@@ -224,7 +225,7 @@ export const AuthScreen: React.FC = () => {
           {/* Divider */}
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or continue with</Text>
+            <Text style={styles.dividerText}>or</Text>
             <View style={styles.dividerLine} />
           </View>
 
@@ -254,9 +255,6 @@ export const AuthScreen: React.FC = () => {
             style={styles.guestBtn}
           >
             <Text style={styles.guestBtnTitle}>Continue as Guest</Text>
-            <Text style={styles.guestBtnSubtitle}>
-              Explore treatments & transparent clinic pricing first →
-            </Text>
           </TouchableOpacity>
 
           {/* Doctor / Clinic Admin Mode Quick Link */}
@@ -269,17 +267,26 @@ export const AuthScreen: React.FC = () => {
             style={styles.doctorPortalBtn}
           >
             <Text style={styles.doctorPortalBtnText}>
-              🩺 Clinic Staff or Doctor? <Text style={{ textDecorationLine: 'underline' }}>Open Doctor Portal</Text>
+              🩺 Clinic Staff or Doctor? <Text style={{ textDecorationLine: 'underline' }}>Open Clinic Portal</Text>
             </Text>
           </TouchableOpacity>
 
-          {/* Privacy Reassurance */}
-          <View style={styles.trustBox}>
-            <ShieldCheck size={14} color={colors.primary} />
-            <Text style={styles.trustText}>
-              Direct in-clinic booking • Verified MDs • Zero spam
+          {/* Quick Demo Pre-fill for testing */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => {
+              setUsernameOrEmail('ananya.sharma@gmail.com');
+              setPassword('customer123');
+              if (mode === 'signup') {
+                setFullName('Ananya Sharma');
+              }
+            }}
+            style={styles.demoFillBtn}
+          >
+            <Text style={styles.demoFillText}>
+              ⚡ Quick Fill: <Text style={{ fontWeight: 'bold' }}>Customer Demo</Text>
             </Text>
-          </View>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -509,17 +516,15 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeights.semibold,
   },
 
-  // Trust Footnote
-  trustBox: {
-    flexDirection: 'row',
+  // Demo fill
+  demoFillBtn: {
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: 18,
+    paddingVertical: 8,
+    marginTop: 6,
+    marginBottom: 10,
   },
-  trustText: {
-    fontSize: typography.fontSizes.micro,
-    color: colors.textMuted,
-    fontWeight: typography.fontWeights.medium,
+  demoFillText: {
+    fontSize: typography.fontSizes.caption - 1,
+    color: colors.primaryDark,
   },
 });

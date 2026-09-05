@@ -30,6 +30,7 @@ export const DoctorScheduleScreen: React.FC = () => {
   const {
     activeClinic,
     clinicDoctors,
+    doctorUser,
     selectedDoctorFilter,
     setSelectedDoctorFilter,
     stats,
@@ -85,21 +86,14 @@ export const DoctorScheduleScreen: React.FC = () => {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
-      {/* Clean Minimal Header */}
+      {/* Clinic Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.clinicNameText}>{activeClinic.name}</Text>
-          <Text style={styles.headerTitle}>Clinic Queue</Text>
+          <Text style={styles.headerTitle}>
+            {activeClinic?.name?.trim() || doctorUser?.clinicName?.trim() || "Doctor's Clinic"}
+          </Text>
+          <Text style={styles.headerSubtitle}>Clinic Portal</Text>
         </View>
-
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={() => navigation.navigate('DoctorProcedures')}
-          style={styles.headerPillBtn}
-        >
-          <Sparkles size={14} color={colors.primaryDark} />
-          <Text style={styles.headerPillBtnText}>Edit Prices</Text>
-        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -327,7 +321,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingTop: 14,
+    paddingBottom: 12,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -342,9 +337,17 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   headerTitle: {
-    fontSize: typography.fontSizes.h3,
+    fontSize: typography.fontSizes.h3 - 2,
     fontWeight: typography.fontWeights.heavy,
     color: colors.text,
+    letterSpacing: -0.3,
+  },
+  headerSubtitle: {
+    fontSize: typography.fontSizes.caption - 1,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.primaryDark,
+    marginTop: 2,
+    letterSpacing: 0.5,
   },
   headerPillBtn: {
     flexDirection: 'row',

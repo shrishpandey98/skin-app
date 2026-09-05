@@ -1,7 +1,8 @@
-import { MOCK_PROCEDURES, MOCK_CLINICS, MOCK_DOCTORS, CONCERN_CATEGORIES } from '../data/mockData';
+import { MOCK_CLINICS, MOCK_DOCTORS, CONCERN_CATEGORIES } from '../data/mockData';
 import { Procedure } from '../types/procedure.types';
 import { Clinic } from '../types/clinic.types';
 import { Doctor } from '../types/doctor.types';
+import { procedureKnowledgeBaseService } from './procedureKnowledgeBase.service';
 
 export interface SearchResultsData {
   procedures: Procedure[];
@@ -24,14 +25,16 @@ export const searchService = {
       };
     }
 
-    await new Promise((r) => setTimeout(r, 60));
+    const allProcedures = await procedureKnowledgeBaseService.getAllProcedures();
 
     // 1. Procedures match
-    const procedures = MOCK_PROCEDURES.filter(
+    const procedures = allProcedures.filter(
       (p) =>
         p.name.toLowerCase().includes(q) ||
         p.shortDescription.toLowerCase().includes(q) ||
         p.category.toLowerCase().includes(q) ||
+        (p.categoryLabel && p.categoryLabel.toLowerCase().includes(q)) ||
+        (p.machineOrTechnology && p.machineOrTechnology.toLowerCase().includes(q)) ||
         p.commonUses.some((use) => use.toLowerCase().includes(q))
     );
 

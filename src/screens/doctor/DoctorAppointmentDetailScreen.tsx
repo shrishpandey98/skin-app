@@ -63,7 +63,7 @@ export const DoctorAppointmentDetailScreen: React.FC = () => {
     if (newStatus === 'confirmed' && appointment.patientPhone) {
       openWhatsAppChat(
         appointment.patientPhone,
-        `Hello ${appointment.patientName}, your consultation on ${appointment.appointmentDate} at ${appointment.appointmentTime} is CONFIRMED with ${activeDoctor.name} at ${activeClinic.name}.`
+        `Hello ${appointment.patientName}, your consultation on ${appointment.appointmentDate} at ${appointment.appointmentTime} is CONFIRMED with ${activeDoctor.name || 'the doctor'} at ${activeClinic.name || 'our clinic'}.`
       );
     }
   };
@@ -72,7 +72,7 @@ export const DoctorAppointmentDetailScreen: React.FC = () => {
     if (appointment.patientPhone) {
       openWhatsAppChat(
         appointment.patientPhone,
-        `Hello ${appointment.patientName}, this is a gentle reminder from ${activeClinic.name} regarding your appointment with ${activeDoctor.name} on ${appointment.appointmentDate} at ${appointment.appointmentTime}. Please arrive 10 minutes early. Let us know if you need to adjust your time!`
+        `Hello ${appointment.patientName}, this is a gentle reminder from ${activeClinic.name || 'our clinic'} regarding your appointment with ${activeDoctor.name || 'the doctor'} on ${appointment.appointmentDate} at ${appointment.appointmentTime}. Please arrive 10 minutes early. Let us know if you need to adjust your time!`
       );
     }
   };
@@ -175,7 +175,7 @@ export const DoctorAppointmentDetailScreen: React.FC = () => {
           <Text style={styles.sectionHeader}>Clinical / Doctor Notes</Text>
           <TextInput
             style={styles.doctorNotesInput}
-            placeholder="Add clinical observations, skin analysis notes, or treatment plan..."
+            placeholder="Add clinical observations, skin analysis notes, or procedure plan..."
             placeholderTextColor={colors.textMuted}
             multiline
             numberOfLines={3}

@@ -1,4 +1,4 @@
-export type ProcedureCategory = 'all' | 'skin' | 'hair' | 'injectables' | 'laser' | 'anti_ageing' | 'body';
+export type ProcedureCategory = 'all' | 'skin' | 'hair' | 'laser' | 'aesthetics';
 
 export interface FAQItemData {
   question: string;
@@ -14,6 +14,7 @@ export interface Procedure {
   shortDescription: string;
   description: string;
   heroImageUrl: string;
+  machineOrTechnology?: string;
   commonUses: string[];
   benefits: string[];
   whatToExpect: string;
@@ -24,6 +25,9 @@ export interface Procedure {
   sortOrder: number;
   isActive: boolean;
   relatedProcedureSlugs?: string[];
+  addedByName?: string;
+  addedByClinicId?: string;
+  isGloballyEnabled?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

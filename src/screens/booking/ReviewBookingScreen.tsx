@@ -164,16 +164,17 @@ export const ReviewBookingScreen: React.FC = () => {
     try {
       setLoadingAuth(true);
       setAuthError('');
-      await new Promise((res) => setTimeout(res, 400));
+      await new Promise((res) => setTimeout(res, 300));
       await loginWithCredentials(
         targetEmail,
         authPassword.trim(),
-        authMode === 'signup' ? (authName.trim() || patientName.trim()) : undefined
+        authMode === 'signup' ? (authName.trim() || patientName.trim()) : undefined,
+        authMode
       );
       // Once signed up/signed in, finalize booking
       await executeAppointmentCreation();
     } catch (e: any) {
-      setAuthError('Authentication failed. Please check your credentials.');
+      setAuthError(e?.message || 'Authentication failed. Please check your credentials.');
     } finally {
       setLoadingAuth(false);
     }

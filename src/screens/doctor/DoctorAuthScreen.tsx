@@ -14,7 +14,6 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import {
-  Stethoscope,
   Building2,
   Mail,
   Lock,
@@ -22,31 +21,27 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
-  ShieldCheck,
   RotateCcw,
   Sparkles,
 } from 'lucide-react-native';
 import { useDoctorStore } from '../../stores/doctor.store';
 import { colors, borderRadius, typography, shadows } from '../../constants/theme';
-import { FloatingBackButton } from '../../components/ui/FloatingBackButton';
 
 export const DoctorAuthScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const { loginDoctorWithCredentials, loginDoctorWithGoogle, setDoctorMode } = useDoctorStore();
+  const { loginDoctorWithCredentials, setDoctorMode } = useDoctorStore();
 
   const [mode, setMode] = useState<'signin' | 'register'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [doctorName, setDoctorName] = useState('');
-  const [clinicName, setClinicName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [loadingAuth, setLoadingAuth] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleCredentialsAuth = async () => {
     if (!email.trim()) {
-      setErrorMessage('Please enter your professional email or doctor ID');
+      setErrorMessage('Please enter your email address');
       return;
     }
     if (!password.trim() || password.length < 4) {
@@ -55,11 +50,7 @@ export const DoctorAuthScreen: React.FC = () => {
     }
     if (mode === 'register') {
       if (!doctorName.trim()) {
-        setErrorMessage('Please enter doctor / practitioner name');
-        return;
-      }
-      if (!clinicName.trim()) {
-        setErrorMessage('Please enter your clinic name');
+        setErrorMessage('Please enter doctor name');
         return;
       }
     }
@@ -67,34 +58,30 @@ export const DoctorAuthScreen: React.FC = () => {
     try {
       setLoadingAuth(true);
       setErrorMessage('');
-      await new Promise((res) => setTimeout(res, 400));
+      await new Promise((res) => setTimeout(res, 300));
       await loginDoctorWithCredentials(
         email.trim(),
         password.trim(),
         mode === 'register' ? doctorName.trim() : undefined,
-        mode === 'register' ? clinicName.trim() : undefined
+        undefined,
+        mode
       );
     } catch (e: any) {
-      setErrorMessage('Authentication failed. Please check your credentials.');
+      setErrorMessage(e?.message || 'Authentication failed. Please check your credentials.');
     } finally {
       setLoadingAuth(false);
     }
   };
 
-  const handleGoogleAuth = async () => {
-    try {
-      setLoadingGoogle(true);
-      setErrorMessage('');
-      await new Promise((res) => setTimeout(res, 400));
-      await loginDoctorWithGoogle();
-    } catch (e: any) {
-      setErrorMessage(e?.message || 'Google authentication failed.');
-    } finally {
-      setLoadingGoogle(false);
-    }
-  };
-
   const handleSwitchToCustomer = () => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('portal');
+        url.searchParams.delete('mode');
+        window.history.replaceState({}, '', url.pathname);
+      } catch (e) {}
+    }
     setDoctorMode(false);
   };
 
@@ -129,11 +116,11 @@ export const DoctorAuthScreen: React.FC = () => {
             </View>
             <View style={styles.portalTag}>
               <Sparkles size={12} color={colors.primaryDark} />
-              <Text style={styles.portalTagText}>CLINIC PARTNER PORTAL</Text>
+              <Text style={styles.portalTagText}>CLINIC PORTAL</Text>
             </View>
             <Text style={styles.brandName}>AURA CLINIC</Text>
             <Text style={styles.brandTagline}>
-              Manage clinic appointments, doctors team roster, procedures & pricing
+              Manage clinic appointments, doctors roster, procedures & pricing
             </Text>
           </View>
 
@@ -148,7 +135,7 @@ export const DoctorAuthScreen: React.FC = () => {
               style={[styles.tabBtn, mode === 'signin' && styles.tabBtnActive]}
             >
               <Text style={[styles.tabBtnText, mode === 'signin' && styles.tabBtnTextActive]}>
-                Clinic Sign In
+                Doctor Sign In
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -160,7 +147,7 @@ export const DoctorAuthScreen: React.FC = () => {
               style={[styles.tabBtn, mode === 'register' && styles.tabBtnActive]}
             >
               <Text style={[styles.tabBtnText, mode === 'register' && styles.tabBtnTextActive]}>
-                Register Clinic
+                Doctor Sign Up
               </Text>
             </TouchableOpacity>
           </View>
@@ -175,46 +162,29 @@ export const DoctorAuthScreen: React.FC = () => {
           {/* Form Fields */}
           <View style={styles.formContainer}>
             {mode === 'register' ? (
-              <>
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Clinic Name</Text>
-                  <View style={[styles.inputBox, shadows.subtle]}>
-                    <Building2 size={18} color={colors.primary} />
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="e.g. Dr. Purva's Skin & Laser Clinic"
-                      placeholderTextColor={colors.textMuted}
-                      value={clinicName}
-                      onChangeText={setClinicName}
-                      autoCapitalize="words"
-                    />
-                  </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Doctor Name</Text>
+                <View style={[styles.inputBox, shadows.subtle]}>
+                  <User size={18} color={colors.primary} />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. Dr. Purva Pande"
+                    placeholderTextColor={colors.textMuted}
+                    value={doctorName}
+                    onChangeText={setDoctorName}
+                    autoCapitalize="words"
+                  />
                 </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Lead Doctor / Admin Name</Text>
-                  <View style={[styles.inputBox, shadows.subtle]}>
-                    <User size={18} color={colors.primary} />
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="e.g. Dr. Purva Pande"
-                      placeholderTextColor={colors.textMuted}
-                      value={doctorName}
-                      onChangeText={setDoctorName}
-                      autoCapitalize="words"
-                    />
-                  </View>
-                </View>
-              </>
+              </View>
             ) : null}
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Clinic Email or Partner ID</Text>
+              <Text style={styles.inputLabel}>Email Address</Text>
               <View style={[styles.inputBox, shadows.subtle]}>
                 <Mail size={18} color={colors.primary} />
                 <TextInput
                   style={styles.textInput}
-                  placeholder="drpurva@skinandlaser.in or clinic id"
+                  placeholder="e.g. contact@skinclinic.com"
                   placeholderTextColor={colors.textMuted}
                   value={email}
                   onChangeText={setEmail}
@@ -263,60 +233,29 @@ export const DoctorAuthScreen: React.FC = () => {
               ) : (
                 <View style={styles.btnContent}>
                   <Text style={styles.primaryAuthBtnText}>
-                    {mode === 'signin' ? 'Sign In to Clinic Dashboard' : 'Register & Access Portal'}
+                    {mode === 'signin' ? 'Sign In to Portal' : 'Sign Up & Access Portal'}
                   </Text>
                   <ArrowRight size={18} color={colors.textInverse} />
                 </View>
               )}
             </TouchableOpacity>
-          </View>
 
-          {/* Divider */}
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or continue with</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* Google SSO Button */}
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={handleGoogleAuth}
-            disabled={loadingGoogle}
-            style={[styles.googleBtn, shadows.subtle]}
-          >
-            {loadingGoogle ? (
-              <ActivityIndicator color={colors.text} size="small" />
-            ) : (
-              <View style={styles.googleContent}>
-                <View style={styles.googleIconCircle}>
-                  <Text style={styles.googleGText}>G</Text>
-                </View>
-                <Text style={styles.googleBtnText}>Continue with Google (Doctor Account)</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-
-          {/* Quick Demo Pre-fill */}
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => {
-              setEmail('drpurva@skinandlaser.in');
-              setPassword('doctor123');
-            }}
-            style={styles.demoFillBtn}
-          >
-            <Text style={styles.demoFillText}>
-              ⚡ Quick Fill: <Text style={{ fontWeight: 'bold' }}>Dr. Purva's Clinic Demo</Text>
-            </Text>
-          </TouchableOpacity>
-
-          {/* Trust & Privacy Footnote */}
-          <View style={styles.trustBox}>
-            <ShieldCheck size={16} color={colors.primary} />
-            <Text style={styles.trustText}>
-              256-bit Encrypted • Direct EHR & WhatsApp Sync • Patient Data Protected
-            </Text>
+            {/* Quick Demo Pre-fill for testing */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                setEmail('doctor@skinclinic.com');
+                setPassword('doctor123');
+                if (mode === 'register') {
+                  setDoctorName('Dr. Purva Pande');
+                }
+              }}
+              style={styles.demoFillBtn}
+            >
+              <Text style={styles.demoFillText}>
+                ⚡ Quick Fill: <Text style={{ fontWeight: 'bold' }}>Dr. Purva Demo</Text>
+              </Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

@@ -67,17 +67,19 @@ export const DoctorProceduresScreen: React.FC = () => {
   const categories = [
     { id: 'all', label: 'All' },
     { id: 'skin', label: 'Skin' },
-    { id: 'laser', label: 'Laser' },
-    { id: 'injectables', label: 'Injectables' },
     { id: 'hair', label: 'Hair' },
-    { id: 'anti_ageing', label: 'Anti-Ageing' },
+    { id: 'laser', label: 'Laser' },
+    { id: 'aesthetics', label: 'Aesthetics' },
   ];
 
   const filteredProcedures = knowledgeBaseProcedures.filter((proc) => {
     const matchesSearch =
       proc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      proc.shortDescription.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || proc.category === selectedCategory;
+      proc.shortDescription.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (proc.categoryLabel && proc.categoryLabel.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesCategory =
+      selectedCategory === 'all' ||
+      proc.category.toLowerCase() === selectedCategory.toLowerCase();
     return matchesSearch && matchesCategory;
   });
 
@@ -103,12 +105,12 @@ export const DoctorProceduresScreen: React.FC = () => {
     await addNewProcedureToKnowledgeBase({
       name: newName.trim(),
       category: newCategory,
-      shortDescription: `Clinical-grade ${newName.trim()} treatment supervised by board-certified dermatologist.`,
+      shortDescription: `Clinical-grade ${newName.trim()} procedure supervised by board-certified dermatologist.`,
       description: `Comprehensive ${newName.trim()} procedure tailored to individual skin and aesthetic goals.`,
       downtime: 'Zero downtime',
       benefits: ['Dermatologist supervised', 'Results-driven protocol'],
       priceFrom: Number(newPrice.trim()) || 3500,
-      priceUnit: newCategory === 'injectables' ? 'per unit' : 'per session',
+      priceUnit: newCategory === 'aesthetics' ? 'per session / unit' : 'per session',
     });
 
     setIsSubmittingNew(false);
@@ -126,7 +128,7 @@ export const DoctorProceduresScreen: React.FC = () => {
         <View style={styles.headerLeft}>
           <Text style={styles.headerTitle}>Procedures & Pricing</Text>
           <Text style={styles.headerSubtitle}>
-            {clinicProcedures.length} Offered • {activeClinic.name}
+            {clinicProcedures.length} Offered • {activeClinic.name || 'Your Clinic'}
           </Text>
         </View>
 
@@ -136,7 +138,7 @@ export const DoctorProceduresScreen: React.FC = () => {
           style={[styles.addBtn, shadows.subtle]}
         >
           <Plus size={16} color={colors.textInverse} />
-          <Text style={styles.addBtnText}>Add Treatment</Text>
+          <Text style={styles.addBtnText}>Add Procedure</Text>
         </TouchableOpacity>
       </View>
 
@@ -150,7 +152,7 @@ export const DoctorProceduresScreen: React.FC = () => {
           <Search size={16} color={colors.textMuted} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search treatments..."
+            placeholder="Search procedures..."
             placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -300,7 +302,7 @@ export const DoctorProceduresScreen: React.FC = () => {
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderTitleBox}>
                 <Sparkles size={18} color={colors.primary} />
-                <Text style={styles.modalTitle}>Add New Treatment</Text>
+                <Text style={styles.modalTitle}>Add Procedure</Text>
               </View>
               <TouchableOpacity onPress={() => setShowAddModal(false)} style={styles.modalClose}>
                 <X size={18} color={colors.textSecondary} />
@@ -309,7 +311,7 @@ export const DoctorProceduresScreen: React.FC = () => {
 
             {/* 1. Name */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Treatment Name</Text>
+              <Text style={styles.inputLabel}>Procedure Name</Text>
               <TextInput
                 style={styles.textInput}
                 placeholder="e.g. Carbon Laser Peel"
@@ -324,7 +326,7 @@ export const DoctorProceduresScreen: React.FC = () => {
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Category</Text>
               <View style={styles.categoryPickerRow}>
-                {(['skin', 'laser', 'injectables', 'hair', 'anti_ageing'] as ProcedureCategory[]).map(
+                {(['skin', 'hair', 'laser', 'aesthetics'] as ProcedureCategory[]).map(
                   (cat) => (
                     <TouchableOpacity
                       key={cat}
@@ -373,7 +375,7 @@ export const DoctorProceduresScreen: React.FC = () => {
               {isSubmittingNew ? (
                 <ActivityIndicator color={colors.textInverse} size="small" />
               ) : (
-                <Text style={styles.saveBtnText}>Add to Clinic & Knowledge Base</Text>
+                <Text style={styles.saveBtnText}>Add Procedure</Text>
               )}
             </TouchableOpacity>
           </View>

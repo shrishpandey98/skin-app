@@ -3,7 +3,8 @@ import { Appointment, AppointmentStatus } from '../types/appointment.types';
 import { Procedure } from '../types/procedure.types';
 import { ClinicProcedure, Clinic } from '../types/clinic.types';
 import { Doctor } from '../types/doctor.types';
-import { MOCK_CLINICS, MOCK_DOCTORS } from '../data/mockData';
+import { MOCK_CLINICS, MOCK_DOCTORS, MOCK_PROCEDURES } from '../data/mockData';
+import { procedureKnowledgeBaseService } from '../services/procedureKnowledgeBase.service';
 import {
   doctorService,
   DoctorStats,
@@ -13,12 +14,12 @@ import {
 } from '../services/doctor.service';
 import { useAppointmentsStore } from './appointments.store';
 
-interface ClinicUserProfile {
+export interface ClinicUserProfile {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   clinicName: string;
-  role: 'clinic_admin' | 'doctor';
 }
 
 interface DoctorState {
@@ -45,14 +46,20 @@ interface DoctorState {
     email: string,
     password: string,
     doctorName?: string,
-    clinicName?: string
+    clinicName?: string,
+    authMode?: 'signin' | 'register'
   ) => Promise<void>;
   loginDoctorWithGoogle: () => Promise<void>;
   doctorLogout: () => Promise<void>;
   setDoctorMode: (active: boolean) => void;
   setSelectedDoctorFilter: (doctorSlugOrId: string | null) => void;
   addDoctorToClinic: (payload: NewDoctorPayload) => Promise<Doctor>;
+  removeDoctor: (doctorId: string) => Promise<void>;
+  updateDoctor: (doctorId: string, updates: Partial<Doctor>) => Promise<void>;
   toggleDoctorActive: (doctorId: string) => Promise<void>;
+  updateClinicProfile: (updates: Partial<Clinic>) => Promise<void>;
+  updateUserProfile: (updates: { name: string; email: string; phone?: string }) => Promise<void>;
+  updateOperatingHours: (hours: Clinic['openingHours']) => Promise<void>;
   updateAppointmentStatus: (
     appointmentId: string,
     status: AppointmentStatus,
@@ -69,66 +76,123 @@ interface DoctorState {
 
 const STORAGE_KEY_DOCTOR = '@aura_doctor_session';
 const STORAGE_KEY_PUBLISHED = '@aura_clinic_published_state';
+const STORAGE_KEY_CLINIC_PROFILE = '@aura_clinic_custom_profile';
+const STORAGE_KEY_DOCTORS_LIST = '@aura_clinic_doctors_list';
+const STORAGE_KEY_CLINIC_PROCEDURES = '@aura_clinic_procedures_list';
+const STORAGE_KEY_ACCOUNTS_MAP = '@aura_clinic_registered_accounts_v3';
 
 const DEFAULT_CLINIC: Clinic = {
-  id: 'clinic_aura_partner',
-  name: "Dr. Purva's Skin & Laser Clinic",
-  slug: 'dr-purvas-skin-and-laser-clinic',
-  description: 'Specialist aesthetic dermatology, laser center & hair restoration.',
-  logoUrl: 'https://drpurvaskinclinic.com/media/uploads/site_setting/117503311.png',
-  coverImageUrl: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?q=80&w=1200&auto=format&fit=crop',
-  phone: '+91 94176 96148',
-  email: 'drpurvapande@gmail.com',
-  address: 'Plot No. 1187, Sector 11, Panchkula (Chandigarh Tricity)',
-  area: 'Sector 11 (Panchkula)',
-  city: 'Chandigarh / Panchkula',
-  state: 'Haryana',
-  latitude: 30.6890,
-  longitude: 76.8534,
+  id: 'clinic_default_aura',
+  name: '',
+  slug: '',
+  description: '',
+  logoUrl: '',
+  coverImageUrl: '',
+  phone: '',
+  email: '',
+  address: '',
+  area: '',
+  city: '',
+  state: '',
+  latitude: 0,
+  longitude: 0,
   openingHours: {
-    monday: { open: '10:00 AM', close: '07:00 PM' },
-    tuesday: { open: '10:00 AM', close: '07:00 PM' },
-    wednesday: { open: '10:00 AM', close: '07:00 PM' },
-    thursday: { open: '10:00 AM', close: '07:00 PM' },
-    friday: { open: '10:00 AM', close: '07:00 PM' },
-    saturday: { open: '10:00 AM', close: '06:30 PM' },
-    sunday: { open: 'Closed', close: 'Closed', isClosed: true },
+    monday: { open: '', close: '' },
+    tuesday: { open: '', close: '' },
+    wednesday: { open: '', close: '' },
+    thursday: { open: '', close: '' },
+    friday: { open: '', close: '' },
+    saturday: { open: '', close: '' },
+    sunday: { open: '', close: '', isClosed: true },
   },
   verificationStatus: 'verified',
-  rating: 4.9,
-  reviewCount: 310,
-  specialties: ['Laser Hair Removal', 'Hydrafacial MD', 'Botox & Fillers', 'Acne Scars', 'PRP Hair Therapy'],
-  galleryImages: [
-    'https://images.unsplash.com/photo-1629909613654-28e377c37b09?q=80&w=800&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?q=80&w=800&auto=format&fit=crop',
-  ],
+  rating: 5.0,
+  reviewCount: 0,
+  specialties: [],
+  galleryImages: [],
   isActive: false, // Default: OFF
   procedures: [],
   doctors: [],
 };
 
-const DEFAULT_DOCTOR: Doctor = {
-  id: 'doc_lead',
-  name: 'Dr. Purva Pande',
-  slug: 'dr-purva-pande',
-  photoUrl: 'https://images.unsplash.com/photo-1594824813686-21a4413158c3?q=80&w=600&auto=format&fit=crop',
-  qualification: 'MBBS, MD (Dermatology), DNB, MNAMS (Ex. GMCH-32, Harvard USA)',
-  specialization: 'Chief Dermatologist & Laser Specialist',
-  experienceYears: 15,
-  bio: 'Dr. Purva is a board-certified senior dermatologist in Chandigarh Tricity specializing in lasers, anti-ageing, and clinical aesthetics.',
-  rating: 4.9,
-  reviewCount: 310,
-  isActive: true,
-  proceduresOffered: [],
+// Persistence Helper
+const persistClinicData = async (data: {
+  doctorUser?: ClinicUserProfile | null;
+  activeClinic?: Clinic;
+  clinicDoctors?: Doctor[];
+  clinicProcedures?: ClinicProcedure[];
+  isClinicPublished?: boolean;
+  userEmailForAccountMap?: string;
+}) => {
+  try {
+    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+    const promises: Promise<any>[] = [];
+
+    if (data.doctorUser !== undefined) {
+      if (data.doctorUser) {
+        promises.push(AsyncStorage.setItem(STORAGE_KEY_DOCTOR, JSON.stringify(data.doctorUser)));
+      } else {
+        promises.push(AsyncStorage.removeItem(STORAGE_KEY_DOCTOR));
+      }
+    }
+    if (data.activeClinic !== undefined) {
+      promises.push(AsyncStorage.setItem(STORAGE_KEY_CLINIC_PROFILE, JSON.stringify(data.activeClinic)));
+    }
+    if (data.clinicDoctors !== undefined) {
+      promises.push(AsyncStorage.setItem(STORAGE_KEY_DOCTORS_LIST, JSON.stringify(data.clinicDoctors)));
+    }
+    if (data.clinicProcedures !== undefined) {
+      promises.push(AsyncStorage.setItem(STORAGE_KEY_CLINIC_PROCEDURES, JSON.stringify(data.clinicProcedures)));
+    }
+    if (data.isClinicPublished !== undefined) {
+      promises.push(AsyncStorage.setItem(STORAGE_KEY_PUBLISHED, data.isClinicPublished ? 'true' : 'false'));
+    }
+
+    // Persist to Accounts DB keyed by normalized email
+    const emailKey = (
+      data.userEmailForAccountMap ||
+      data.doctorUser?.email ||
+      data.activeClinic?.email ||
+      ''
+    ).toLowerCase().trim();
+
+    if (emailKey) {
+      const rawAccounts = await AsyncStorage.getItem(STORAGE_KEY_ACCOUNTS_MAP);
+      const accounts = rawAccounts ? JSON.parse(rawAccounts) : {};
+      const prevAccount = accounts[emailKey] || {};
+
+      // Keep doctorUser profile object in accounts map even if logging out
+      const savedDoctorUser = data.doctorUser !== undefined
+        ? (data.doctorUser || prevAccount.doctorUser || null)
+        : (prevAccount.doctorUser || null);
+
+      accounts[emailKey] = {
+        password: prevAccount.password || '',
+        doctorUser: savedDoctorUser,
+        activeClinic: data.activeClinic || prevAccount.activeClinic,
+        clinicDoctors: data.clinicDoctors || prevAccount.clinicDoctors,
+        clinicProcedures: data.clinicProcedures || prevAccount.clinicProcedures,
+        isClinicPublished:
+          data.isClinicPublished !== undefined
+            ? data.isClinicPublished
+            : (prevAccount.isClinicPublished !== undefined ? prevAccount.isClinicPublished : false),
+      };
+      promises.push(AsyncStorage.setItem(STORAGE_KEY_ACCOUNTS_MAP, JSON.stringify(accounts)));
+    }
+
+    await Promise.all(promises);
+  } catch (e) {
+    console.warn('Failed to persist clinic data', e);
+  }
 };
 
 export const useDoctorStore = create<DoctorState>((set, get) => ({
-  activeClinic: MOCK_CLINICS[0] || DEFAULT_CLINIC,
-  activeDoctor: MOCK_DOCTORS[0] || DEFAULT_DOCTOR,
-  clinicDoctors: MOCK_DOCTORS.length > 0 ? [...MOCK_DOCTORS] : [DEFAULT_DOCTOR],
+  activeClinic: DEFAULT_CLINIC,
+  activeDoctor: {} as Doctor,
+  clinicDoctors: [],
   selectedDoctorFilter: null,
   knowledgeBaseProcedures: [],
-  clinicProcedures: MOCK_CLINICS[0]?.procedures || [],
+  clinicProcedures: [],
   stats: {
     todayAppointmentsCount: 0,
     pendingCount: 0,
@@ -147,15 +211,45 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
   initializeDoctorAuth: async () => {
     try {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-      const stored = await AsyncStorage.getItem(STORAGE_KEY_DOCTOR);
-      const isPub = await AsyncStorage.getItem(STORAGE_KEY_PUBLISHED);
-      if (stored) {
-        const user = JSON.parse(stored);
-        set({ isDoctorAuthenticated: true, doctorUser: user });
-      }
-      if (isPub === 'true') {
-        set({ isClinicPublished: true });
-        get().toggleClinicPublish(true);
+      const storedDoctor = await AsyncStorage.getItem(STORAGE_KEY_DOCTOR);
+
+      if (storedDoctor) {
+        const user: ClinicUserProfile = JSON.parse(storedDoctor);
+        const normalizedEmail = (user.email || '').toLowerCase().trim();
+
+        const rawAccounts = await AsyncStorage.getItem(STORAGE_KEY_ACCOUNTS_MAP);
+        const accounts = rawAccounts ? JSON.parse(rawAccounts) : {};
+        const savedAccount = normalizedEmail ? accounts[normalizedEmail] : null;
+
+        if (savedAccount) {
+          const clinic: Clinic = savedAccount.activeClinic || {
+            ...DEFAULT_CLINIC,
+            id: 'clinic_' + Date.now(),
+            name: user.clinicName || '',
+            email: normalizedEmail,
+          };
+          const doctors: Doctor[] = savedAccount.clinicDoctors || [];
+          const procs: ClinicProcedure[] = savedAccount.clinicProcedures || [];
+          const published = !!savedAccount.isClinicPublished;
+
+          set({
+            isDoctorAuthenticated: true,
+            doctorUser: savedAccount.doctorUser || user,
+            activeClinic: clinic,
+            clinicDoctors: doctors,
+            activeDoctor: doctors[0] || ({} as Doctor),
+            clinicProcedures: procs,
+            isClinicPublished: published,
+          });
+
+          doctorService.setClinicDoctors(doctors);
+          doctorService.setClinicProcedures(procs);
+        } else {
+          set({
+            isDoctorAuthenticated: true,
+            doctorUser: user,
+          });
+        }
       }
     } catch (e) {
       console.warn('Failed to load doctor auth session', e);
@@ -176,7 +270,7 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
 
     set({ isClinicPublished: publish, activeClinic: updatedClinic });
 
-    // Sync to MOCK_CLINICS
+    // Sync to MOCK_CLINICS for customer view
     const clinicIdx = MOCK_CLINICS.findIndex((c) => c.id === updatedClinic.id || c.slug === updatedClinic.slug);
     if (publish) {
       if (clinicIdx >= 0) {
@@ -184,7 +278,6 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
       } else {
         MOCK_CLINICS.push(updatedClinic);
       }
-      // Add doctors to MOCK_DOCTORS
       doctors.forEach((d) => {
         if (!MOCK_DOCTORS.some((md) => md.id === d.id)) {
           MOCK_DOCTORS.push(d);
@@ -194,7 +287,6 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
       if (clinicIdx >= 0) {
         MOCK_CLINICS.splice(clinicIdx, 1);
       }
-      // Remove clinic doctors from MOCK_DOCTORS
       doctors.forEach((d) => {
         const docIdx = MOCK_DOCTORS.findIndex((md) => md.id === d.id);
         if (docIdx >= 0) {
@@ -203,75 +295,225 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
       });
     }
 
-    try {
-      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-      await AsyncStorage.setItem(STORAGE_KEY_PUBLISHED, publish ? 'true' : 'false');
-    } catch (e) {
-      console.warn('Failed to persist published state', e);
-    }
+    await persistClinicData({
+      isClinicPublished: publish,
+      activeClinic: updatedClinic,
+      clinicDoctors: doctors,
+      clinicProcedures: procedures,
+      doctorUser: get().doctorUser,
+    });
   },
 
   loginDoctorWithCredentials: async (
     email: string,
     password: string,
     doctorName?: string,
-    clinicName?: string
+    clinicName?: string,
+    authMode: 'signin' | 'register' = 'signin'
   ) => {
     const isEmail = email.includes('@');
-    const name = doctorName || (isEmail ? email.split('@')[0] : email);
-    const formattedName = name.startsWith('Dr.') ? name : `Dr. ${name.charAt(0).toUpperCase() + name.slice(1)}`;
-    const clinic = clinicName || get().activeClinic.name;
+    const normalizedEmail = email.toLowerCase().trim();
+    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
 
-    const doctorProfile: ClinicUserProfile = {
-      id: 'doc_' + Date.now(),
-      name: formattedName,
-      email: isEmail ? email : `${email}@clinic.aura.app`,
-      clinicName: clinic,
-      role: 'clinic_admin',
-    };
+    // Look up saved account for this email
+    const rawAccounts = await AsyncStorage.getItem(STORAGE_KEY_ACCOUNTS_MAP);
+    const accounts: Record<string, any> = rawAccounts ? JSON.parse(rawAccounts) : {};
 
-    set({ isDoctorAuthenticated: true, doctorUser: doctorProfile });
+    const existingAccount = accounts[normalizedEmail];
 
-    try {
-      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-      await AsyncStorage.setItem(STORAGE_KEY_DOCTOR, JSON.stringify(doctorProfile));
-    } catch (e) {
-      console.warn('Failed to persist doctor session', e);
+    if (authMode === 'signin') {
+      if (!existingAccount) {
+        throw new Error('No clinic account found with this email. Please register your clinic first.');
+      }
+      if (existingAccount.password && existingAccount.password !== password) {
+        throw new Error('Incorrect password. Please verify your credentials.');
+      }
+      if (!existingAccount.password) {
+        existingAccount.password = password;
+      }
+    } else if (authMode === 'register') {
+      if (existingAccount && existingAccount.password && existingAccount.password !== password) {
+        throw new Error('An account with this email is already registered. Please sign in with your password.');
+      }
     }
+
+    let clinic: Clinic;
+    let doctors: Doctor[];
+    let userProfile: ClinicUserProfile;
+    let procedures: ClinicProcedure[];
+    let isPublished = false;
+
+    if (existingAccount && authMode === 'signin') {
+      // 1. Restore exact saved account
+      userProfile = existingAccount.doctorUser || {
+        id: 'doc_' + Date.now(),
+        name: doctorName || existingAccount.activeClinic?.name || email.split('@')[0],
+        email: email,
+        clinicName: existingAccount.activeClinic?.name || clinicName || '',
+      };
+      clinic = existingAccount.activeClinic || DEFAULT_CLINIC;
+      doctors = (existingAccount.clinicDoctors && existingAccount.clinicDoctors.length > 0)
+        ? existingAccount.clinicDoctors
+        : [];
+      procedures = (existingAccount.clinicProcedures && existingAccount.clinicProcedures.length > 0)
+        ? existingAccount.clinicProcedures
+        : [];
+      isPublished = !!existingAccount.isClinicPublished;
+
+      if (clinicName) {
+        clinic = { ...clinic, name: clinicName };
+      }
+    } else {
+      // 2. New Registration - Only save lead doctor name, do NOT pre-fill clinic details or procedures
+      const name = doctorName ? doctorName.trim() : (isEmail ? email.split('@')[0] : email);
+      const cName = clinicName ? clinicName.trim() : '';
+      const clinicId = 'clinic_' + Date.now();
+      const clinicSlug = cName ? cName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : `clinic-${Date.now()}`;
+
+      clinic = {
+        id: clinicId,
+        name: cName,
+        slug: clinicSlug,
+        description: '',
+        logoUrl: '',
+        coverImageUrl: '',
+        phone: '',
+        email: normalizedEmail,
+        address: '',
+        area: '',
+        city: '',
+        state: '',
+        latitude: 0,
+        longitude: 0,
+        openingHours: {
+          monday: { open: '', close: '' },
+          tuesday: { open: '', close: '' },
+          wednesday: { open: '', close: '' },
+          thursday: { open: '', close: '' },
+          friday: { open: '', close: '' },
+          saturday: { open: '', close: '' },
+          sunday: { open: '', close: '', isClosed: true },
+        },
+        verificationStatus: 'verified',
+        rating: 5.0,
+        reviewCount: 0,
+        specialties: [],
+        galleryImages: [],
+        isActive: false,
+        procedures: [],
+        doctors: [],
+      };
+
+      userProfile = {
+        id: 'doc_' + Date.now(),
+        name,
+        email: normalizedEmail,
+        clinicName: cName,
+      };
+
+      const leadDoc: Doctor = {
+        id: 'doc_' + Date.now(),
+        name: name,
+        slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+        photoUrl: '',
+        bio: '',
+        specialization: '',
+        qualification: '',
+        experienceYears: 0,
+        isActive: true,
+        proceduresOffered: [],
+        rating: 5.0,
+        reviewCount: 0,
+        clinicId: clinicId,
+        clinicName: cName,
+      };
+      doctors = [leadDoc];
+
+      // No procedure selected by default
+      procedures = [];
+    }
+
+    doctorService.setClinicDoctors(doctors);
+    doctorService.setClinicProcedures(procedures);
+
+    set({
+      isDoctorAuthenticated: true,
+      doctorUser: userProfile,
+      activeClinic: clinic,
+      clinicDoctors: doctors,
+      activeDoctor: doctors[0] || ({} as Doctor),
+      clinicProcedures: procedures,
+      isClinicPublished: isPublished,
+    });
+
+    // Save into accounts dictionary with password
+    accounts[normalizedEmail] = {
+      password: password,
+      doctorUser: userProfile,
+      activeClinic: clinic,
+      clinicDoctors: doctors,
+      clinicProcedures: procedures,
+      isClinicPublished: isPublished,
+    };
+    await AsyncStorage.setItem(STORAGE_KEY_ACCOUNTS_MAP, JSON.stringify(accounts));
+
+    await persistClinicData({
+      userEmailForAccountMap: normalizedEmail,
+      doctorUser: userProfile,
+      activeClinic: clinic,
+      clinicDoctors: doctors,
+      clinicProcedures: procedures,
+      isClinicPublished: isPublished,
+    });
 
     await get().initializeDoctorPortal();
   },
 
   loginDoctorWithGoogle: async () => {
-    // In demo / staging or Supabase OAuth
     const doctorProfile: ClinicUserProfile = {
       id: 'doc_google_' + Date.now(),
-      name: "Dr. Purva's Skin & Laser Clinic Admin",
-      email: 'drpurva@skinandlaser.in',
-      clinicName: "Dr. Purva's Skin & Laser Clinic",
-      role: 'clinic_admin',
+      name: "Clinic Manager",
+      email: 'clinic@skinandlaser.in',
+      clinicName: get().activeClinic.name || "Aura Skin Clinic",
     };
 
     set({ isDoctorAuthenticated: true, doctorUser: doctorProfile });
-
-    try {
-      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-      await AsyncStorage.setItem(STORAGE_KEY_DOCTOR, JSON.stringify(doctorProfile));
-    } catch (e) {
-      console.warn('Failed to persist doctor session', e);
-    }
+    await persistClinicData({
+      doctorUser: doctorProfile,
+      activeClinic: get().activeClinic,
+      clinicDoctors: get().clinicDoctors,
+      clinicProcedures: get().clinicProcedures,
+      isClinicPublished: get().isClinicPublished,
+    });
 
     await get().initializeDoctorPortal();
   },
 
   doctorLogout: async () => {
-    set({ isDoctorAuthenticated: false, doctorUser: null });
-    try {
-      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-      await AsyncStorage.removeItem(STORAGE_KEY_DOCTOR);
-    } catch (e) {
-      console.warn('Failed to clear doctor session', e);
+    // Keep all clinic profile, doctors, and procedures saved in account registry
+    const current = get();
+    const userEmail = (current.doctorUser?.email || current.activeClinic?.email || '').toLowerCase().trim();
+    if (userEmail) {
+      await persistClinicData({
+        userEmailForAccountMap: userEmail,
+        doctorUser: null, // clear active token
+        activeClinic: current.activeClinic,
+        clinicDoctors: current.clinicDoctors,
+        clinicProcedures: current.clinicProcedures,
+        isClinicPublished: current.isClinicPublished,
+      });
+    } else {
+      await persistClinicData({ doctorUser: null });
     }
+
+    set({
+      isDoctorAuthenticated: false,
+      doctorUser: null,
+      activeClinic: DEFAULT_CLINIC,
+      clinicDoctors: [],
+      clinicProcedures: [],
+      isClinicPublished: false,
+    });
   },
 
   setSelectedDoctorFilter: (doctorSlugOrId: string | null) => {
@@ -282,15 +524,44 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
     set({ loading: true });
     try {
       const newDoc = await doctorService.addDoctorToClinic(get().activeClinic.id, payload);
+      const updatedDocs = [...get().clinicDoctors, newDoc];
       set({
-        clinicDoctors: [...get().clinicDoctors, newDoc],
+        clinicDoctors: updatedDocs,
         loading: false,
+      });
+      await persistClinicData({
+        clinicDoctors: updatedDocs,
+        doctorUser: get().doctorUser,
+        activeClinic: get().activeClinic,
       });
       return newDoc;
     } catch (e: any) {
       set({ error: e?.message || 'Failed to add doctor', loading: false });
       throw e;
     }
+  },
+
+  removeDoctor: async (doctorId: string) => {
+    await doctorService.removeDoctor(doctorId);
+    const updatedDocs = get().clinicDoctors.filter((d) => d.id !== doctorId);
+    set({ clinicDoctors: updatedDocs });
+    await persistClinicData({
+      clinicDoctors: updatedDocs,
+      doctorUser: get().doctorUser,
+      activeClinic: get().activeClinic,
+    });
+  },
+
+  updateDoctor: async (doctorId: string, updates: Partial<Doctor>) => {
+    await doctorService.updateDoctor(doctorId, updates);
+    const updatedDocs = get().clinicDoctors.map((d) => (d.id === doctorId ? { ...d, ...updates } : d));
+    const activeDoc = get().activeDoctor?.id === doctorId ? { ...get().activeDoctor, ...updates } : get().activeDoctor;
+    set({ clinicDoctors: updatedDocs, activeDoctor: activeDoc });
+    await persistClinicData({
+      clinicDoctors: updatedDocs,
+      doctorUser: get().doctorUser,
+      activeClinic: get().activeClinic,
+    });
   },
 
   toggleDoctorActive: async (doctorId: string) => {
@@ -301,15 +572,68 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
       await doctorService.toggleDoctorActive(doctorId, nextActive);
       const updated = currentDocs.map((d) => (d.id === doctorId ? { ...d, isActive: nextActive } : d));
       set({ clinicDoctors: updated });
+      await persistClinicData({
+        clinicDoctors: updated,
+        doctorUser: get().doctorUser,
+        activeClinic: get().activeClinic,
+      });
     }
+  },
+
+  updateClinicProfile: async (updates: Partial<Clinic>) => {
+    const current = get().activeClinic;
+    const updated: Clinic = { ...current, ...updates };
+    set({ activeClinic: updated });
+    await doctorService.updateClinicProfile(current.id, updates);
+    await persistClinicData({
+      activeClinic: updated,
+      doctorUser: get().doctorUser,
+    });
+  },
+
+  updateUserProfile: async (updates: { name: string; email: string; phone?: string }) => {
+    const current = get().doctorUser || {
+      id: 'doc_' + Date.now(),
+      name: updates.name,
+      email: updates.email,
+      phone: updates.phone,
+      clinicName: get().activeClinic.name,
+    };
+    const updated: ClinicUserProfile = {
+      ...current,
+      ...updates,
+    };
+    set({ doctorUser: updated });
+    await persistClinicData({
+      doctorUser: updated,
+      activeClinic: get().activeClinic,
+    });
+  },
+
+  updateOperatingHours: async (hours: Clinic['openingHours']) => {
+    const current = get().activeClinic;
+    const updated: Clinic = { ...current, openingHours: hours };
+    set({ activeClinic: updated });
+    await doctorService.updateClinicProfile(current.id, { openingHours: hours });
+    await persistClinicData({
+      activeClinic: updated,
+      doctorUser: get().doctorUser,
+    });
   },
 
   initializeDoctorPortal: async () => {
     set({ loading: true, error: null });
     try {
-      const kbProcedures = await doctorService.getKnowledgeBaseProcedures();
-      const clinicProcs = await doctorService.getClinicProcedures(get().activeClinic.id);
-      const clinicDocs = await doctorService.getClinicDoctors(get().activeClinic.id);
+      const clinicId = get().activeClinic.id;
+      const kbProcedures = await doctorService.getKnowledgeBaseProcedures(clinicId);
+      const clinicProcs =
+        get().clinicProcedures.length > 0
+          ? get().clinicProcedures
+          : await doctorService.getClinicProcedures(clinicId);
+      const clinicDocs =
+        get().clinicDoctors.length > 0
+          ? get().clinicDoctors
+          : await doctorService.getClinicDoctors(clinicId);
       const allAppointments = useAppointmentsStore.getState().appointments;
       const patients = doctorService.getPatientDirectory(allAppointments);
       const stats = doctorService.calculateStats(allAppointments);
@@ -378,6 +702,11 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
         cp.procedureId === procedureId || cp.id === procedureId ? { ...cp, ...updates } : cp
       );
       set({ clinicProcedures: currentProcs });
+      await persistClinicData({
+        clinicProcedures: currentProcs,
+        doctorUser: get().doctorUser,
+        activeClinic: get().activeClinic,
+      });
     }
   },
 
@@ -388,10 +717,17 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
         get().activeClinic.id,
         payload
       );
+      const updatedKB = [procedure, ...get().knowledgeBaseProcedures];
+      const updatedProcs = [clinicProcedure, ...get().clinicProcedures];
       set({
-        knowledgeBaseProcedures: [procedure, ...get().knowledgeBaseProcedures],
-        clinicProcedures: [clinicProcedure, ...get().clinicProcedures],
+        knowledgeBaseProcedures: updatedKB,
+        clinicProcedures: updatedProcs,
         loading: false,
+      });
+      await persistClinicData({
+        clinicProcedures: updatedProcs,
+        doctorUser: get().doctorUser,
+        activeClinic: get().activeClinic,
       });
     } catch (e: any) {
       set({ error: e?.message || 'Failed to add procedure', loading: false });
@@ -402,6 +738,11 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
     await doctorService.toggleProcedureOffering(get().activeClinic.id, procedure, isOffered);
     const updatedProcs = await doctorService.getClinicProcedures(get().activeClinic.id);
     set({ clinicProcedures: [...updatedProcs] });
+    await persistClinicData({
+      clinicProcedures: updatedProcs,
+      doctorUser: get().doctorUser,
+      activeClinic: get().activeClinic,
+    });
   },
 
   refreshStats: () => {

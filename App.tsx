@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { useAuthStore } from './src/stores/auth.store';
 import { useAppointmentsStore } from './src/stores/appointments.store';
+import { useDoctorStore } from './src/stores/doctor.store';
 import { colors } from './src/constants/theme';
 
 const queryClient = new QueryClient({
@@ -24,8 +25,25 @@ const queryClient = new QueryClient({
 export default function App() {
   const { initializeAuth } = useAuthStore();
   const { initializeAppointments } = useAppointmentsStore();
+  const { setDoctorMode } = useDoctorStore();
 
   useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const search = window.location.search || '';
+      const pathname = window.location.pathname || '';
+      const hash = window.location.hash || '';
+      if (
+        search.includes('doctor') ||
+        search.includes('clinic') ||
+        search.includes('portal') ||
+        pathname.includes('doctor') ||
+        pathname.includes('clinic') ||
+        hash.includes('doctor') ||
+        hash.includes('clinic')
+      ) {
+        setDoctorMode(true);
+      }
+    }
     initializeAuth();
     initializeAppointments();
   }, []);

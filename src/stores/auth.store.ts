@@ -13,7 +13,12 @@ interface AuthState {
   savedProcedures: string[];
   login: (phoneOrEmail: string, name?: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
-  loginWithCredentials: (usernameOrEmail: string, password: string, name?: string) => Promise<void>;
+  loginWithCredentials: (
+    usernameOrEmail: string,
+    password: string,
+    name?: string,
+    mode?: 'signin' | 'signup'
+  ) => Promise<void>;
   continueAsGuest: () => void;
   logout: () => Promise<void>;
   toggleSaveClinic: (clinicSlug: string) => void;
@@ -28,6 +33,7 @@ const STORAGE_KEY_USER = '@aura_user_session';
 const STORAGE_KEY_GUEST = '@aura_guest_session';
 const STORAGE_KEY_SAVED_CLINICS = '@aura_saved_clinics';
 const STORAGE_KEY_SAVED_PROCEDURES = '@aura_saved_procedures';
+const STORAGE_KEY_CUSTOMERS_MAP = '@aura_customer_registered_accounts_v1';
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
@@ -88,23 +94,98 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  loginWithCredentials: async (usernameOrEmail: string, password: string, name?: string) => {
+  loginWithCredentials: async (
+    usernameOrEmail: string,
+    password: string,
+    name?: string,
+    mode: 'signin' | 'signup' = 'signin'
+  ) => {
     const isEmail = usernameOrEmail.includes('@');
-    const userName = name || (isEmail ? usernameOrEmail.split('@')[0] : usernameOrEmail);
-    const capitalized = userName.charAt(0).toUpperCase() + userName.slice(1);
+    const normalizedKey = usernameOrEmail.toLowerCase().trim();
 
-    const newUser: UserProfile = {
-      id: 'usr_' + Date.now(),
-      name: capitalized,
-      email: isEmail ? usernameOrEmail : `${usernameOrEmail}@aura.app`,
-      phone: '+91 98765 43210',
-      city: 'Chandigarh',
-      profileImageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop',
+    // 1. Read registered customers DB
+    const rawMap = await AsyncStorage.getItem(STORAGE_KEY_CUSTOMERS_MAP);
+    const customersMap: Record<string, { password: string; user: UserProfile }> = rawMap
+      ? JSON.parse(rawMap)
+      : {};
+
+    // 2. Pre-seed default demo users if not present
+    const demoUsers: Record<string, { password: string; user: UserProfile }> = {
+      'ananya.sharma@gmail.com': {
+        password: 'customer123',
+        user: {
+          id: 'usr_ananya_demo',
+          name: 'Ananya Sharma',
+          email: 'ananya.sharma@gmail.com',
+          phone: '+91 98765 43210',
+          city: 'Chandigarh',
+          profileImageUrl:
+            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop',
+        },
+      },
+      'priya@example.com': {
+        password: 'password123',
+        user: {
+          id: 'usr_priya_demo',
+          name: 'Priya Sharma',
+          email: 'priya@example.com',
+          phone: '+91 98765 43210',
+          city: 'Chandigarh',
+          profileImageUrl:
+            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop',
+        },
+      },
     };
 
-    set({ isAuthenticated: true, isGuest: false, hasCompletedAuth: true, user: newUser });
+    Object.entries(demoUsers).forEach(([emailKey, data]) => {
+      if (!customersMap[emailKey]) {
+        customersMap[emailKey] = data;
+      }
+    });
+    if (!customersMap['priyasharma']) {
+      customersMap['priyasharma'] = demoUsers['priya@example.com'];
+    }
+
+    const existingRecord = customersMap[normalizedKey];
+
+    let userToLogin: UserProfile;
+
+    if (mode === 'signin') {
+      if (!existingRecord) {
+        throw new Error('No user account found with this username/email. Please sign up first.');
+      }
+      if (existingRecord.password && existingRecord.password !== password) {
+        throw new Error('Incorrect password. Please verify your credentials.');
+      }
+      userToLogin = existingRecord.user;
+    } else {
+      // mode === 'signup'
+      if (existingRecord) {
+        throw new Error('An account with this email/username is already registered. Please sign in.');
+      }
+      const userName = name || (isEmail ? usernameOrEmail.split('@')[0] : usernameOrEmail);
+      const capitalized = userName.charAt(0).toUpperCase() + userName.slice(1);
+
+      userToLogin = {
+        id: 'usr_' + Date.now(),
+        name: capitalized,
+        email: isEmail ? usernameOrEmail : `${usernameOrEmail}@aura.app`,
+        phone: '+91 98765 43210',
+        city: 'Chandigarh',
+        profileImageUrl:
+          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop',
+      };
+
+      customersMap[normalizedKey] = {
+        password: password,
+        user: userToLogin,
+      };
+      await AsyncStorage.setItem(STORAGE_KEY_CUSTOMERS_MAP, JSON.stringify(customersMap));
+    }
+
+    set({ isAuthenticated: true, isGuest: false, hasCompletedAuth: true, user: userToLogin });
     try {
-      await AsyncStorage.setItem(STORAGE_KEY_USER, JSON.stringify(newUser));
+      await AsyncStorage.setItem(STORAGE_KEY_USER, JSON.stringify(userToLogin));
       await AsyncStorage.removeItem(STORAGE_KEY_GUEST);
     } catch (e) {
       console.warn('Failed to persist credential session', e);

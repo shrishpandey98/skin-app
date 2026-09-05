@@ -4,6 +4,7 @@ import { Appointment, AppointmentStatus } from '../types/appointment.types';
 import { Procedure, ProcedureCategory } from '../types/procedure.types';
 import { Clinic, ClinicProcedure } from '../types/clinic.types';
 import { Doctor } from '../types/doctor.types';
+import { procedureKnowledgeBaseService } from './procedureKnowledgeBase.service';
 
 export interface DoctorStats {
   todayAppointmentsCount: number;
@@ -47,23 +48,31 @@ export interface NewDoctorPayload {
 }
 
 class DoctorService {
-  private knowledgeBaseProcedures: Procedure[] = [...MOCK_PROCEDURES];
-  private clinicProcedures: ClinicProcedure[] = [...(MOCK_CLINICS[0]?.procedures || [])];
-  private clinicDoctors: Doctor[] = [...MOCK_DOCTORS];
+  private knowledgeBaseProcedures: Procedure[] = procedureKnowledgeBaseService.getSynchronousList();
+  private clinicProcedures: ClinicProcedure[] = [];
+  private clinicDoctors: Doctor[] = [];
 
   // 1. Get Clinic Doctors
   async getClinicDoctors(clinicId: string): Promise<Doctor[]> {
-    return this.clinicDoctors.filter((d) => !d.clinicId || d.clinicId === clinicId);
+    return this.clinicDoctors;
   }
 
-  // 2. Add Doctor to Clinic
+  setClinicDoctors(doctors: Doctor[]): void {
+    this.clinicDoctors = doctors;
+  }
+
+  setClinicProcedures(procedures: ClinicProcedure[]): void {
+    this.clinicProcedures = procedures;
+  }
+
+  // 2. Add Doctor to Clinic (No forced Dr. prefix)
   async addDoctorToClinic(clinicId: string, payload: NewDoctorPayload): Promise<Doctor> {
     const slug = payload.name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '');
 
-    const formattedName = payload.name.startsWith('Dr.') ? payload.name : `Dr. ${payload.name}`;
+    const formattedName = payload.name.trim();
 
     const newDoctor: Doctor = {
       id: 'doc_' + Date.now(),
@@ -77,19 +86,13 @@ class DoctorService {
       experienceYears: payload.experienceYears || 5,
       bio:
         payload.bio ||
-        `${formattedName} is an experienced specialist at Dr. Purva's Skin & Laser Clinic specializing in ${payload.specialization}.`,
-      rating: 4.9,
-      reviewCount: 12,
+        `${formattedName} is an experienced specialist specializing in ${payload.specialization}.`,
+      rating: 5.0,
+      reviewCount: 0,
       clinicId: clinicId,
-      clinicName: "Dr. Purva's Skin & Laser Clinic",
+      clinicName: MOCK_CLINICS.find((c) => c.id === clinicId)?.name || '',
       isActive: true,
-      proceduresOffered: [
-        'Hydrafacial MD',
-        'Chemical Peel',
-        'Acne Scar Treatment',
-        'Laser Hair Removal',
-        'Botox',
-      ],
+      proceduresOffered: [],
     };
 
     this.clinicDoctors.push(newDoctor);
@@ -110,7 +113,25 @@ class DoctorService {
     return newDoctor;
   }
 
-  // 3. Toggle Doctor Active Status
+  // 3. Remove Doctor from Clinic
+  async removeDoctor(doctorId: string): Promise<boolean> {
+    this.clinicDoctors = this.clinicDoctors.filter((d) => d.id !== doctorId);
+    const mockIdx = MOCK_DOCTORS.findIndex((d) => d.id === doctorId);
+    if (mockIdx >= 0) {
+      MOCK_DOCTORS.splice(mockIdx, 1);
+    }
+    if (MOCK_CLINICS[0]?.doctors) {
+      MOCK_CLINICS[0].doctors = MOCK_CLINICS[0].doctors.filter((d) => d.id !== doctorId);
+    }
+    try {
+      await supabase.from('doctors').delete().eq('id', doctorId);
+    } catch (e) {
+      // local sync
+    }
+    return true;
+  }
+
+  // 4. Toggle Doctor Active Status
   async toggleDoctorActive(doctorId: string, isActive: boolean): Promise<Doctor | null> {
     const doc = this.clinicDoctors.find((d) => d.id === doctorId);
     if (doc) {
@@ -123,21 +144,48 @@ class DoctorService {
     return doc || null;
   }
 
-  // 1. Get Master Procedure Knowledge Base Catalog
-  async getKnowledgeBaseProcedures(): Promise<Procedure[]> {
-    try {
-      const { data, error } = await supabase
-        .from('procedures')
-        .select('*')
-        .order('sort_order', { ascending: true });
-
-      if (!error && data && data.length > 0) {
-        return data as Procedure[];
-      }
-    } catch (e) {
-      // fallback to in-memory / mock KB
+  // 4b. Update Doctor Details
+  async updateDoctor(doctorId: string, updates: Partial<Doctor>): Promise<Doctor | null> {
+    const doc = this.clinicDoctors.find((d) => d.id === doctorId);
+    if (doc) {
+      Object.assign(doc, updates);
     }
-    return this.knowledgeBaseProcedures;
+    const mockDoc = MOCK_DOCTORS.find((d) => d.id === doctorId);
+    if (mockDoc) {
+      Object.assign(mockDoc, updates);
+    }
+    if (MOCK_CLINICS[0]?.doctors) {
+      const cDoc = MOCK_CLINICS[0].doctors.find((d) => d.id === doctorId);
+      if (cDoc) {
+        Object.assign(cDoc, updates);
+      }
+    }
+    try {
+      await supabase.from('doctors').update(updates).eq('id', doctorId);
+    } catch (e) {
+      // local sync
+    }
+    return doc || mockDoc || null;
+  }
+
+  // 5. Update Clinic Profile Details
+  async updateClinicProfile(clinicId: string, updates: Partial<Clinic>): Promise<Clinic | null> {
+    const clinic = MOCK_CLINICS.find((c) => c.id === clinicId) || MOCK_CLINICS[0];
+    if (clinic) {
+      Object.assign(clinic, updates);
+      try {
+        await supabase.from('clinics').update(updates).eq('id', clinicId);
+      } catch (e) {
+        // local sync
+      }
+      return clinic;
+    }
+    return null;
+  }
+
+  // 1. Get Master Procedure Knowledge Base Catalog
+  async getKnowledgeBaseProcedures(clinicId?: string): Promise<Procedure[]> {
+    return procedureKnowledgeBaseService.getAllProcedures(undefined, false, clinicId);
   }
 
   // 2. Add New Procedure to Knowledge Base & Clinic Offering
@@ -161,14 +209,17 @@ class DoctorService {
       heroImageUrl: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?q=80&w=1200&auto=format&fit=crop',
       commonUses: ['Clinical skin enhancement', 'Targeted aesthetic improvement'],
       benefits: payload.benefits.length > 0 ? payload.benefits : ['Dermatologist supervised', 'Results-driven protocol'],
-      whatToExpect: 'In-clinic consultation followed by personalized treatment.',
+      whatToExpect: 'In-clinic consultation followed by personalized procedure protocol.',
       sessionsInfo: 'Customized sessions tailored by dermatologist during consultation.',
       downtime: payload.downtime || 'Zero downtime',
       considerations: ['Follow post-procedure sunscreen and hydration guidelines'],
       faqs: [{ question: `Is ${payload.name} safe?`, answer: 'Yes, performed by board-certified dermatologists using certified clinical equipment.' }],
-      sortOrder: this.knowledgeBaseProcedures.length + 1,
+      sortOrder: 1,
       isActive: true,
       relatedProcedureSlugs: [],
+      addedByName: MOCK_CLINICS.find((c) => c.id === clinicId)?.name || "Dr. Purva's Skin & Laser Clinic",
+      addedByClinicId: clinicId,
+      isGloballyEnabled: false, // Only visible in this clinic until backend mapping/enabling
     };
 
     const newClinicProcedure: ClinicProcedure = {
@@ -184,7 +235,8 @@ class DoctorService {
     };
 
     // Add to in-memory Knowledge Base and Clinic Offering
-    this.knowledgeBaseProcedures.unshift(newProcedure);
+    procedureKnowledgeBaseService.addCustomProcedure(newProcedure);
+    this.knowledgeBaseProcedures = procedureKnowledgeBaseService.getSynchronousList();
     this.clinicProcedures.unshift(newClinicProcedure);
 
     // Also update MOCK_CLINICS so customer app instantly sees it
