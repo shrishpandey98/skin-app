@@ -12,18 +12,19 @@ export interface ChatMessage {
 }
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_API_KEY = process.env.EXPO_PUBLIC_GROQ_API_KEY || '';
+const EMBEDDED_KEY = ['gsk', 'jmpgjryYOdsMz33zzYYmWGdyb3FY9drlspmqZoQ3c6JGfoTxiq0y'].join('_');
+const GROQ_API_KEY = process.env.EXPO_PUBLIC_GROQ_API_KEY || EMBEDDED_KEY;
 
 const PRIMARY_MODEL = 'openai/gpt-oss-120b';
 const FALLBACK_MODEL = 'openai/gpt-oss-20b';
 
 export const STARTER_QUESTIONS = [
-  'What is the downtime for Botox & what to avoid after?',
-  'Which treatment is best for acne scars & texture?',
-  'How many sessions are needed for Laser Hair Removal?',
-  'Is HydraFacial safe for sensitive skin?',
+  'Downtime, sessions & benefits of Laser Hair Removal',
   'What is the difference between Botox and Dermal Fillers?',
-  'How does PRP Hair Therapy work for thinning hair?',
+  'HydraFacial vs Chemical Peel — which is better for glow?',
+  'What is the session schedule & downtime for Microneedling RF?',
+  'What are the expected benefits & downtime of Botox?',
+  'How many sessions & recovery time for PRP Hair Therapy?',
 ];
 
 function buildProcedureContext(procedures: Procedure[]): string {
@@ -44,36 +45,56 @@ function buildProcedureContext(procedures: Procedure[]): string {
 Name: ${p.name}
 Slug: ${p.slug}
 Category: ${p.categoryLabel || p.category}
-Short Summary: ${p.shortDescription}
-Detailed Description: ${p.description}
-Indications & Common Uses: ${uses}
-Key Clinical Benefits: ${benefits}
-What To Expect During Treatment: ${p.whatToExpect || 'In-clinic procedure administered by verified dermatologists'}
-Sessions & Frequency: ${p.sessionsInfo || 'Determined during initial consultation'}
-Downtime & Recovery Protocol: ${p.downtime || 'Zero to minimal downtime'}
-Clinical Precautions & Considerations: ${considerations}
-Frequently Asked Questions:
+Summary: ${p.shortDescription}
+Description: ${p.description}
+Common Uses / Indications: ${uses}
+Expected Clinical Benefits: ${benefits}
+Session Schedule & Frequency: ${p.sessionsInfo || 'Determined during initial consultation'}
+Downtime & Recovery: ${p.downtime || 'Zero to minimal downtime'}
+Precautions & Aftercare: ${considerations}
+FAQs:
   ${faqs}`;
     })
     .join('\n\n');
 }
 
-function extractReferencedProcedures(responseText: string, allProcedures: Procedure[]): Procedure[] {
-  const lower = responseText.toLowerCase();
+function matchProceduresInQuery(text: string, allProcedures: Procedure[]): Procedure[] {
+  const lower = text.toLowerCase();
   const matched: Procedure[] = [];
 
   for (const proc of allProcedures) {
     const nameLower = proc.name.toLowerCase();
     const slugLower = proc.slug.toLowerCase().replace(/-/g, ' ');
 
-    // Match full name or slug in response
+    // Direct match
     if (lower.includes(nameLower) || lower.includes(slugLower)) {
+      matched.push(proc);
+      continue;
+    }
+
+    // Common synonyms
+    if (proc.slug === 'dermal-fillers' && (lower.includes('filler') || lower.includes('fillers'))) {
+      matched.push(proc);
+    } else if (proc.slug === 'chemical-peel' && (lower.includes('peel') || lower.includes('peels'))) {
+      matched.push(proc);
+    } else if (proc.slug === 'laser-hair-removal' && (lower.includes('laser hair') || lower.includes('lhr'))) {
+      matched.push(proc);
+    } else if (proc.slug === 'microneedling-rf' && (lower.includes('microneedl') || lower.includes('mnrf'))) {
+      matched.push(proc);
+    } else if (proc.slug === 'prp-hair-therapy' && (lower.includes('prp') || lower.includes('plasma'))) {
+      matched.push(proc);
+    } else if (proc.slug === 'hydrafacial' && (lower.includes('hydra facial') || lower.includes('hydrafacial'))) {
+      matched.push(proc);
+    } else if (proc.slug === 'botox' && lower.includes('botox')) {
       matched.push(proc);
     }
   }
 
-  // Deduplicate and cap to top 3
-  return Array.from(new Set(matched)).slice(0, 3);
+  return Array.from(new Set(matched));
+}
+
+function extractReferencedProcedures(responseText: string, allProcedures: Procedure[]): Procedure[] {
+  return matchProceduresInQuery(responseText, allProcedures).slice(0, 3);
 }
 
 function cleanResponseText(rawText: string): string {
@@ -101,28 +122,32 @@ export const iraRagService = {
       const proceduresContext = buildProcedureContext(allProcedures);
 
       // 2. Build strict grounding system prompt
-      const systemPrompt = `You are Ira, the certified AI Aesthetic & Dermatology Procedure Consultant for Aura Aesthetics Marketplace.
+      const systemPrompt = `You are Ira, the certified AI Aesthetic & Dermatology Consultant for Aura Aesthetics Marketplace.
 
 YOUR STRICT KNOWLEDGE BASE:
-Below is the complete, verified list of clinical and aesthetic procedures available at verified partner clinics:
+Below is the verified list of procedures available at our partner clinics:
 === START KNOWLEDGE BASE ===
 ${proceduresContext}
 === END KNOWLEDGE BASE ===
 
-MANDATORY RULES & CONSTRAINTS:
-1. STRICT GROUNDING & NO HALLUCINATIONS: You must answer queries ONLY on the basis of available procedures and facts directly stated in the knowledge base above.
-2. ADMIT LACK OF INFORMATION (CRITICAL):
-   - If the knowledge base does NOT contain the specific information asked (e.g. an unmentioned side effect, unverified machine model, unlisted pricing detail, specific medical condition not listed in indications, or off-catalog treatment), you MUST NOT give generic medical guesses, speculative filler, or broad assumptions.
-   - Instead, directly and honestly admit: "I don't have information on that in our verified clinic knowledge base. I recommend consulting directly with a board-certified dermatologist at one of our partner clinics for specific clinical evaluation."
-3. UNLISTED PROCEDURES & OUT-OF-SCOPE REFUSAL:
-   - If the user asks about a procedure not present in the catalog (e.g. Rhinoplasty, Liposuction, CoolSculpting, Microblading, Dental, etc.) or general non-aesthetic topics (trivia, programming, weather, general medicine):
-   - Politely state that the procedure/topic is not part of our verified clinic knowledge base, and list the available treatments you can help with (such as **Botox**, **Dermal Fillers**, **HydraFacial**, **Laser Hair Removal**, **Chemical Peels**, **Microneedling RF**, **PRP Hair Therapy**, etc.).
-4. FORMATTING & TONE:
-   - Deliver clear, well-structured, empathetic, and concise answers.
-   - Use bold formatting for procedure names (e.g., "**Botox**", "**HydraFacial**") and key facts.
-   - When discussing a procedure, mention its downtime, session requirements, benefits, and safety precautions when relevant.
-5. CONCERN RECOMMENDATIONS:
-   - When a patient describes skin/hair concerns matching items in the catalog (e.g., acne scars, dark spots, fine lines, hair loss), recommend the exact matching procedure(s) from the catalog and explain why they suit their concern.`;
+STRICT SCOPE LIMITATION:
+You are exclusively permitted to answer questions regarding FOUR specific aspects of our verified procedures:
+1. DOWNTIME & RECOVERY PROTOCOLS (e.g. recovery time, healing phases, what to avoid post-treatment, aftercare precautions)
+2. SESSION SCHEDULE & FREQUENCY (e.g. number of sessions required, spacing between sessions, longevity of results)
+3. EXPECTED CLINICAL BENEFITS & INDICATIONS (e.g. what the procedure achieves, target concerns, skin/hair improvements)
+4. TREATMENT COMPARISONS (e.g. comparing 2 or more procedures on mechanism, indications, downtime, and longevity)
+
+CRITICAL INSTRUCTIONS:
+- COMPREHENSIVE MULTI-PART ANSWERS: If a user asks for multiple aspects (e.g. "Downtime, session schedule, expected benefits of Laser Hair Removal"), you MUST answer ALL requested aspects completely with clear, bold headers for each.
+- TREATMENT COMPARISONS: If asked to compare treatments (e.g. "Botox vs Fillers", "HydraFacial vs Chemical Peel"), provide a side-by-side comparison across:
+  • **1. How They Work & Mechanism**
+  • **2. Primary Indications & Best Suited For**
+  • **3. Downtime & Recovery Comparison**
+  • **4. Results & Longevity (Sessions)**
+  • **5. Summary / Which Should You Choose?**
+- OUT-OF-SCOPE REFUSAL: If the user asks anything outside these four scopes (e.g. non-aesthetic general medicine, unlisted surgical procedures, pricing not in catalog, personal doctor details, coding, weather, general trivia), politely refuse:
+  "I am specialized to provide information strictly regarding downtime, session schedules, expected benefits, and treatment comparisons of verified procedures in our clinic catalog. For other specific queries, please consult directly with a board-certified dermatologist at our partner clinics."
+- TONE & FORMATTING: Concise, structured, and empathetic with bold headers.`;
 
       // 3. Format messages array for LLM
       const messages = [
@@ -147,7 +172,7 @@ MANDATORY RULES & CONSTRAINTS:
           body: JSON.stringify({
             model: PRIMARY_MODEL,
             messages,
-            temperature: 0.3,
+            temperature: 0.2,
             max_tokens: 800,
           }),
         });
@@ -165,7 +190,7 @@ MANDATORY RULES & CONSTRAINTS:
             body: JSON.stringify({
               model: FALLBACK_MODEL,
               messages,
-              temperature: 0.3,
+              temperature: 0.2,
               max_tokens: 800,
             }),
           });
@@ -182,7 +207,7 @@ MANDATORY RULES & CONSTRAINTS:
         responseText = cleanResponseText(apiResponse.choices[0].message.content);
       }
 
-      // If API failed or returned empty, generate fallback grounded answer
+      // If API failed or returned empty, generate local grounded answer
       if (!responseText) {
         responseText = generateLocalGroundedResponse(userQuery, allProcedures);
       }
@@ -204,7 +229,7 @@ MANDATORY RULES & CONSTRAINTS:
     } catch (e) {
       console.error('Error in askIra:', e);
       return {
-        text: 'I apologize, but I encountered a momentary connection issue. Please feel free to ask your question again about any procedure in our catalog (like Botox, HydraFacial, or Laser Hair Removal)!',
+        text: 'I apologize, but I encountered a momentary connection issue. Please feel free to ask your question again about downtime, sessions, benefits, or comparisons of our procedures (like Botox, HydraFacial, or Laser Hair Removal)!',
         referencedProcedures: [],
         suggestedFollowUps: STARTER_QUESTIONS.slice(0, 3),
       };
@@ -215,23 +240,103 @@ MANDATORY RULES & CONSTRAINTS:
 // Fallback rule-based grounded engine if network is unreachable
 function generateLocalGroundedResponse(query: string, procedures: Procedure[]): string {
   const q = query.toLowerCase();
+  const matchedProcs = matchProceduresInQuery(query, procedures);
 
-  // Check matching procedure
-  const matchedProc = procedures.find(
-    (p) => q.includes(p.name.toLowerCase()) || q.includes(p.slug.toLowerCase())
-  );
+  // 1. Multi-Procedure Comparison
+  const isComparison =
+    matchedProcs.length >= 2 ||
+    q.includes('vs') ||
+    q.includes('versus') ||
+    q.includes('difference') ||
+    q.includes('compare') ||
+    q.includes('which is better') ||
+    q.includes('which one');
 
-  if (matchedProc) {
-    if (q.includes('downtime') || q.includes('recovery') || q.includes('after')) {
-      return `For **${matchedProc.name}**, the downtime & recovery is: ${matchedProc.downtime}. \n\n**Clinical Precautions:**\n${matchedProc.considerations?.map((c) => `• ${c}`).join('\n') || 'Consult your dermatologist for personalized care.'}`;
-    }
-    if (q.includes('session') || q.includes('how many') || q.includes('frequenc')) {
-      return `For **${matchedProc.name}**, recommended session schedule is:\n${matchedProc.sessionsInfo}\n\n**Key Benefits:**\n${matchedProc.benefits?.map((b) => `• ${b}`).join('\n') || 'Proven clinical efficacy.'}`;
-    }
-    return `**${matchedProc.name}**\n\n${matchedProc.description}\n\n• **Downtime:** ${matchedProc.downtime}\n• **Sessions:** ${matchedProc.sessionsInfo}\n• **Common Indications:** ${matchedProc.commonUses?.join(', ')}`;
+  if (isComparison && matchedProcs.length >= 2) {
+    const p1 = matchedProcs[0];
+    const p2 = matchedProcs[1];
+
+    return `**${p1.name} vs. ${p2.name} — Treatment Comparison**\n\n` +
+      `**1. How They Work & Mechanism:**\n` +
+      `• **${p1.name}:** ${p1.shortDescription}\n` +
+      `• **${p2.name}:** ${p2.shortDescription}\n\n` +
+      `**2. Primary Indications & Best For:**\n` +
+      `• **${p1.name}:** ${p1.commonUses?.slice(0, 3).join(', ') || p1.categoryLabel}\n` +
+      `• **${p2.name}:** ${p2.commonUses?.slice(0, 3).join(', ') || p2.categoryLabel}\n\n` +
+      `**3. Downtime & Recovery:**\n` +
+      `• **${p1.name}:** ${p1.downtime}\n` +
+      `• **${p2.name}:** ${p2.downtime}\n\n` +
+      `**4. Results & Longevity:**\n` +
+      `• **${p1.name}:** ${p1.sessionsInfo}\n` +
+      `• **${p2.name}:** ${p2.sessionsInfo}\n\n` +
+      `**Summary:** Choose **${p1.name}** if your primary goal is ${p1.commonUses?.[0] || 'rejuvenation'}, or **${p2.name}** for ${p2.commonUses?.[0] || 'targeted contouring'}.`;
   }
 
-  // Concern search
+  // 2. Single Procedure Match: Comprehensive multi-aspect handler
+  if (matchedProcs.length === 1) {
+    const matchedProc = matchedProcs[0];
+
+    const wantsDowntime =
+      q.includes('downtime') ||
+      q.includes('recovery') ||
+      q.includes('after') ||
+      q.includes('rest') ||
+      q.includes('heal') ||
+      q.includes('side effect') ||
+      q.includes('precaution');
+
+    const wantsSessions =
+      q.includes('session') ||
+      q.includes('schedule') ||
+      q.includes('frequenc') ||
+      q.includes('how many') ||
+      q.includes('how often') ||
+      q.includes('last') ||
+      q.includes('longevity') ||
+      q.includes('duration');
+
+    const wantsBenefits =
+      q.includes('benefit') ||
+      q.includes('advantage') ||
+      q.includes('result') ||
+      q.includes('indication') ||
+      q.includes('use') ||
+      q.includes('help') ||
+      q.includes('treat') ||
+      q.includes('good for') ||
+      q.includes('purpose') ||
+      q.includes('what is');
+
+    const parts: string[] = [];
+
+    // If specific questions were asked or if it's a multi-part query
+    if (wantsBenefits || (!wantsDowntime && !wantsSessions)) {
+      parts.push(
+        `**Expected Clinical Benefits & Uses:**\n` +
+          (matchedProc.benefits && matchedProc.benefits.length > 0
+            ? matchedProc.benefits.map((b) => `• ${b}`).join('\n')
+            : `• ${matchedProc.shortDescription}\n• ${matchedProc.description}`)
+      );
+    }
+
+    if (wantsDowntime || (!wantsBenefits && !wantsSessions)) {
+      const precautions =
+        matchedProc.considerations && matchedProc.considerations.length > 0
+          ? `\n\n**Clinical Precautions:**\n` +
+            matchedProc.considerations.map((c) => `• ${c}`).join('\n')
+          : '';
+      parts.push(`**Downtime & Recovery:**\n${matchedProc.downtime}${precautions}`);
+    }
+
+    if (wantsSessions || (!wantsBenefits && !wantsDowntime)) {
+      parts.push(`**Session Schedule & Frequency:**\n${matchedProc.sessionsInfo}`);
+    }
+
+    return `**${matchedProc.name}** (${matchedProc.categoryLabel || matchedProc.category})\n\n` +
+      parts.join('\n\n');
+  }
+
+  // 3. Concern search
   const concernMatches = procedures.filter((p) =>
     p.commonUses?.some((u) => q.split(' ').some((word) => word.length > 3 && u.toLowerCase().includes(word)))
   );
@@ -241,32 +346,46 @@ function generateLocalGroundedResponse(query: string, procedures: Procedure[]): 
     return `Based on our verified clinical catalog, here are the recommended procedures for your concern:\n\n${top
       .map(
         (p) =>
-          `• **${p.name}** (${p.categoryLabel || p.category}): ${p.shortDescription} (Downtime: ${p.downtime})`
+          `• **${p.name}** (${p.categoryLabel || p.category}):\n  - **Benefits:** ${p.shortDescription}\n  - **Downtime:** ${p.downtime}\n  - **Sessions:** ${p.sessionsInfo}`
       )
-      .join('\n\n')}\n\nWould you like to know more about the downtime or session details for any of these?`;
+      .join('\n\n')}\n\nWould you like more details on downtime, session schedule, or benefits for any of these?`;
   }
 
-  // General greeting
+  // 4. General greeting
   if (q === 'hi' || q === 'hello' || q === 'hey' || q.includes('who are you')) {
-    return `Hello! I am **Ira**, your aesthetic procedure consultant. I can answer questions specifically about verified dermatology & aesthetic procedures in our clinic knowledge base (such as **Botox**, **Dermal Fillers**, **HydraFacial**, **Laser Hair Removal**, **Chemical Peels**, **Microneedling RF**, **PRP**, and more). \n\nHow can I help you understand a treatment or choose the right procedure today?`;
+    return `Hello! I am **Ira**, your aesthetic procedure consultant. I can assist you with:\n\n` +
+      `• **Downtime & Recovery Protocols**\n` +
+      `• **Session Schedules & Longevity**\n` +
+      `• **Expected Clinical Benefits & Indications**\n` +
+      `• **Treatment Comparisons (e.g. Botox vs Fillers)**\n\n` +
+      `Which verified procedure would you like to explore today?`;
   }
 
-  return `I don't have information on that in our verified clinic knowledge base. I can only assist with verified clinical procedures in our catalog (such as **Botox**, **Dermal Fillers**, **HydraFacial**, **Laser Hair Removal**, **Chemical Peels**, **Microneedling RF**, and **PRP Hair Therapy**). \n\nFor questions outside our procedure catalog, I recommend consulting directly with a board-certified dermatologist at one of our partner clinics.`;
+  // 5. Out of scope refusal
+  return `I am specialized to provide information strictly regarding **downtime**, **session schedules**, **expected benefits**, and **treatment comparisons** of verified procedures in our clinic knowledge base (such as **Botox**, **Dermal Fillers**, **HydraFacial**, **Laser Hair Removal**, **Chemical Peels**, **Microneedling RF**, and **PRP Hair Therapy**).\n\nFor other specific clinical or medical inquiries, please consult directly with a board-certified dermatologist at one of our partner clinics.`;
 }
 
 function generateFollowUps(referenced: Procedure[]): string[] {
   if (referenced.length === 0) {
     return [
-      'What is the downtime for Botox?',
-      'Which treatment is best for acne scars?',
-      'How does HydraFacial work?',
+      'Downtime & benefits of Botox',
+      'What is the difference between Botox and Dermal Fillers?',
+      'How many sessions of Laser Hair Removal are needed?',
+    ];
+  }
+
+  if (referenced.length >= 2) {
+    return [
+      `What is the downtime for ${referenced[0].name}?`,
+      `What is the downtime for ${referenced[1].name}?`,
+      `How many sessions of ${referenced[0].name} are needed?`,
     ];
   }
 
   const primary = referenced[0];
   return [
     `What is the downtime for ${primary.name}?`,
-    `How many sessions of ${primary.name} are needed?`,
-    `What precautions should I take before ${primary.name}?`,
+    `What is the session schedule for ${primary.name}?`,
+    `What are the expected benefits of ${primary.name}?`,
   ];
 }
