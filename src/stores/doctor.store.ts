@@ -244,6 +244,20 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
 
           doctorService.setClinicDoctors(doctors);
           doctorService.setClinicProcedures(procs);
+
+          if (published) {
+            const clinicIdx = MOCK_CLINICS.findIndex((c) => c.id === clinic.id || c.slug === clinic.slug);
+            if (clinicIdx >= 0) {
+              MOCK_CLINICS[clinicIdx] = { ...clinic, isActive: true, doctors, procedures: procs };
+            } else {
+              MOCK_CLINICS.push({ ...clinic, isActive: true, doctors, procedures: procs });
+            }
+            doctors.forEach((d) => {
+              if (!MOCK_DOCTORS.some((md) => md.id === d.id)) {
+                MOCK_DOCTORS.push(d);
+              }
+            });
+          }
         } else {
           set({
             isDoctorAuthenticated: true,

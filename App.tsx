@@ -8,6 +8,7 @@ import { RootNavigator } from './src/navigation/RootNavigator';
 import { useAuthStore } from './src/stores/auth.store';
 import { useAppointmentsStore } from './src/stores/appointments.store';
 import { useDoctorStore } from './src/stores/doctor.store';
+import { clinicsService } from './src/services/clinics.service';
 import { colors } from './src/constants/theme';
 
 const queryClient = new QueryClient({
@@ -46,6 +47,7 @@ export default function App() {
     }
     initializeAuth();
     initializeAppointments();
+    clinicsService.getAllClinics();
   }, []);
 
   const content = (

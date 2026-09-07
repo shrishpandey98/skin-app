@@ -36,6 +36,8 @@ import { MOCK_PROCEDURES, MOCK_CLINICS } from '../../data/mockData';
 import { colors, borderRadius, typography, shadows } from '../../constants/theme';
 import { analytics } from '../../services/analytics.service';
 import { proceduresService } from '../../services/procedures.service';
+import { clinicsService } from '../../services/clinics.service';
+import { Clinic } from '../../types/clinic.types';
 import { useAppointmentsStore } from '../../stores/appointments.store';
 
 // 12 Common Procedures with True-to-Procedure Clinical & Aesthetic Icons
@@ -205,14 +207,23 @@ export const HomeScreen: React.FC = () => {
   });
 
   const [refreshing, setRefreshing] = useState(false);
+  const [clinics, setClinics] = useState<Clinic[]>([]);
+
+  useEffect(() => {
+    clinicsService.getAllClinics().then((data) => setClinics(data));
+  }, []);
 
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      await Promise.allSettled([
+      const [_, __, loadedClinics] = await Promise.allSettled([
         proceduresService.refreshLiveProcedures(),
         useAppointmentsStore.getState().initializeAppointments(),
+        clinicsService.getAllClinics(),
       ]);
+      if (loadedClinics.status === 'fulfilled') {
+        setClinics(loadedClinics.value);
+      }
     } catch (e) {
       console.warn('Home refresh error', e);
     } finally {
@@ -355,7 +366,7 @@ export const HomeScreen: React.FC = () => {
         {/* ─────────────────────────────────────────────────────────────
             3. TOP VERIFIED CLINICS (Rendered if clinics exist)
            ───────────────────────────────────────────────────────────── */}
-        {MOCK_CLINICS.length > 0 ? (
+        {clinics.length > 0 ? (
           <View style={styles.clinicsSection}>
             <SectionHeader
               title="Top Verified Clinics"
@@ -367,9 +378,9 @@ export const HomeScreen: React.FC = () => {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalScroll}
             >
-              {MOCK_CLINICS.map((clinic) => (
+              {clinics.map((clinic) => (
                 <ClinicCard
-                  key={clinic.id}
+                  key={clinic.id || clinic.slug}
                   clinic={clinic}
                   variant="horizontal"
                   onPress={() => handleClinicPress(clinic.slug, clinic.name)}
