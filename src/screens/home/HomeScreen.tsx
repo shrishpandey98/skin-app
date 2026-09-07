@@ -26,6 +26,7 @@ import {
   Grid,
   CheckCircle2,
   ArrowRight,
+  Bot,
 } from 'lucide-react-native';
 import { TopBar } from '../../components/ui/TopBar';
 import { SearchBar } from '../../components/ui/SearchBar';
@@ -177,6 +178,11 @@ export const HomeScreen: React.FC = () => {
     navigation.navigate('ClinicDetailModal', { clinicSlug: slug });
   };
 
+  const handleAskIra = (initialQuery?: string) => {
+    analytics.track('ira_opened_from_home', { initialQuery });
+    navigation.navigate('IraTab', { initialQuery });
+  };
+
   // Animated interpolations for the highlighted "Not Sure" box
   const animatedBorderColor = pulseAnim.interpolate({
     inputRange: [0, 0.5, 1],
@@ -240,6 +246,31 @@ export const HomeScreen: React.FC = () => {
             onPress={handleSearchPress}
             style={styles.searchBar}
           />
+
+          {/* Ask Ira Quick Bar */}
+          <TouchableOpacity
+            style={styles.iraBanner}
+            onPress={() => handleAskIra()}
+            activeOpacity={0.85}
+          >
+            <View style={styles.iraBannerLeft}>
+              <View style={styles.iraIconCircle}>
+                <Sparkles size={16} color={colors.textInverse} />
+              </View>
+              <View>
+                <View style={styles.iraTitleRow}>
+                  <Text style={styles.iraBannerTitle}>Ask Ira</Text>
+                  <View style={styles.iraPill}>
+                    <Text style={styles.iraPillText}>AI Advisor</Text>
+                  </View>
+                </View>
+                <Text style={styles.iraBannerSubtitle}>
+                  Instant answers on downtime, sessions & comparisons
+                </Text>
+              </View>
+            </View>
+            <ArrowRight size={16} color={colors.primary} />
+          </TouchableOpacity>
         </View>
 
         {/* ─────────────────────────────────────────────────────────────
@@ -402,7 +433,64 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   searchBar: {
+    marginBottom: 10,
+  },
+  iraBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F7EEDD',
+    borderWidth: 1,
+    borderColor: '#E6D7B9',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: borderRadius.lg,
+    marginTop: 2,
     marginBottom: 4,
+    ...shadows.subtle,
+  },
+  iraBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+    marginRight: 8,
+  },
+  iraIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iraTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  iraBannerTitle: {
+    fontSize: 13,
+    fontWeight: typography.fontWeights.heavy,
+    color: colors.text,
+  },
+  iraPill: {
+    backgroundColor: '#FAF5EE',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: borderRadius.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
+  },
+  iraPillText: {
+    fontSize: 9,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.primaryDark,
+  },
+  iraBannerSubtitle: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 1,
   },
 
   // ─────────────────────────────────────────────────────────────

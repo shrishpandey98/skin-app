@@ -1,10 +1,11 @@
 import React from 'react';
-import { StyleSheet, Platform } from 'react-native';
+import { StyleSheet, Platform, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Sparkles, Stethoscope, Building2 } from 'lucide-react-native';
+import { Sparkles, Stethoscope, Building2, Bot } from 'lucide-react-native';
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { ProceduresScreen } from '../screens/procedures/ProceduresScreen';
 import { ClinicsScreen } from '../screens/clinics/ClinicsScreen';
+import { IraChatScreen } from '../screens/chat/IraChatScreen';
 import { MainTabParamList } from '../types/navigation.types';
 import { colors, typography, shadows } from '../constants/theme';
 
@@ -42,6 +43,18 @@ export const TabNavigator: React.FC = () => {
         }}
       />
       <Tab.Screen
+        name="IraTab"
+        component={IraChatScreen}
+        options={{
+          tabBarLabel: 'Ask Ira',
+          tabBarIcon: ({ color, size, focused }) => (
+            <View style={focused ? styles.activeIraIconWrapper : undefined}>
+              <Bot size={22} color={color} />
+            </View>
+          ),
+        }}
+      />
+      <Tab.Screen
         name="ClinicsTab"
         component={ClinicsScreen}
         options={{
@@ -69,5 +82,8 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSizes.micro + 0.5,
     fontWeight: typography.fontWeights.semibold,
     marginBottom: 2,
+  },
+  activeIraIconWrapper: {
+    transform: [{ scale: 1.05 }],
   },
 });

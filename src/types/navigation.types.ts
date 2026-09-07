@@ -8,6 +8,7 @@ import { Appointment } from './appointment.types';
 export type MainTabParamList = {
   HomeTab: undefined;
   ProceduresTab: { initialCategory?: string } | undefined;
+  IraTab: { initialQuery?: string; initialProcedureSlug?: string } | undefined;
   ClinicsTab: { initialProcedureSlug?: string; initialArea?: string } | undefined;
 };
 
