@@ -34,12 +34,12 @@ export default function App() {
       const hash = window.location.hash || '';
       if (
         search.includes('doctor') ||
-        search.includes('clinic') ||
         search.includes('portal') ||
+        search.includes('mode=doctor') ||
         pathname.includes('doctor') ||
-        pathname.includes('clinic') ||
+        pathname.includes('portal') ||
         hash.includes('doctor') ||
-        hash.includes('clinic')
+        hash.includes('portal')
       ) {
         setDoctorMode(true);
       }
@@ -49,7 +49,7 @@ export default function App() {
   }, []);
 
   const content = (
-    <SafeAreaProvider>
+    <SafeAreaProvider style={styles.providerContainer}>
       <QueryClientProvider client={queryClient}>
         <NavigationContainer>
           <StatusBar style="dark" />
@@ -71,26 +71,39 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  webOuterContainer: {
+  providerContainer: {
     flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  webOuterContainer: {
     backgroundColor: '#ECE7DD',
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'fixed' as any,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     width: '100%',
     height: '100%',
-    minHeight: '100vh' as any,
+    maxHeight: '100dvh' as any,
+    overflow: 'hidden',
   },
   webMobileFrame: {
+    flex: 1,
     width: '100%',
     maxWidth: 480,
     height: '100%',
-    minHeight: '100vh' as any,
+    maxHeight: '100dvh' as any,
     backgroundColor: colors.background,
     shadowColor: '#2B261D',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
     shadowRadius: 24,
+    overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
+    position: 'relative',
   },
 });
