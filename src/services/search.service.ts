@@ -30,12 +30,12 @@ export const searchService = {
     // 1. Procedures match
     const procedures = allProcedures.filter(
       (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.shortDescription.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q) ||
+        p.name?.toLowerCase().includes(q) ||
+        p.shortDescription?.toLowerCase().includes(q) ||
+        p.category?.toLowerCase().includes(q) ||
         (p.categoryLabel && p.categoryLabel.toLowerCase().includes(q)) ||
         (p.machineOrTechnology && p.machineOrTechnology.toLowerCase().includes(q)) ||
-        p.commonUses.some((use) => use.toLowerCase().includes(q))
+        p.commonUses?.some((use) => use.toLowerCase().includes(q))
     );
 
     // 2. Clinics match

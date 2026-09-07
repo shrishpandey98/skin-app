@@ -268,19 +268,18 @@ export const HomeScreen: React.FC = () => {
               <View style={styles.iraIconCircle}>
                 <Sparkles size={16} color={colors.textInverse} />
               </View>
-              <View>
+              <View style={styles.iraTextCol}>
                 <View style={styles.iraTitleRow}>
                   <Text style={styles.iraBannerTitle}>Ask Ira</Text>
-                  <View style={styles.iraPill}>
-                    <Text style={styles.iraPillText}>AI Advisor</Text>
-                  </View>
                 </View>
-                <Text style={styles.iraBannerSubtitle}>
+                <Text style={styles.iraBannerSubtitle} numberOfLines={1} ellipsizeMode="tail">
                   Instant answers on downtime, sessions & comparisons
                 </Text>
               </View>
             </View>
-            <ArrowRight size={16} color={colors.primary} />
+            <View style={styles.iraArrowCircle}>
+              <ArrowRight size={15} color={colors.primary} />
+            </View>
           </TouchableOpacity>
         </View>
 
@@ -453,10 +452,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#F7EEDD',
     borderWidth: 1,
     borderColor: '#E6D7B9',
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: borderRadius.lg,
-    marginTop: 2,
+    marginTop: 4,
     marginBottom: 4,
     ...shadows.subtle,
   },
@@ -465,6 +464,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     flex: 1,
+    minWidth: 0,
     marginRight: 8,
   },
   iraIconCircle: {
@@ -474,6 +474,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
+  },
+  iraTextCol: {
+    flex: 1,
+    minWidth: 0,
   },
   iraTitleRow: {
     flexDirection: 'row',
@@ -485,23 +490,19 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeights.heavy,
     color: colors.text,
   },
-  iraPill: {
-    backgroundColor: '#FAF5EE',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: borderRadius.pill,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
-  },
-  iraPillText: {
-    fontSize: 9,
-    fontWeight: typography.fontWeights.bold,
-    color: colors.primaryDark,
-  },
   iraBannerSubtitle: {
     fontSize: 11,
     color: colors.textSecondary,
     marginTop: 1,
+  },
+  iraArrowCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(173, 144, 74, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
 
   // ─────────────────────────────────────────────────────────────

@@ -9,10 +9,11 @@ import {
   StatusBar,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { Sparkles, RotateCcw, Building2, Info, ArrowRight } from 'lucide-react-native';
+import { Sparkles, RotateCcw, Building2, ArrowLeft } from 'lucide-react-native';
 import { ProcedureCard } from '../../components/cards/ProcedureCard';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
-import { proceduresService } from '../../services/procedures.service';
+import { FloatingBackButton } from '../../components/ui/FloatingBackButton';
+import { recommendationService } from '../../services/recommendation.service';
 import { Procedure } from '../../types/procedure.types';
 import { colors, borderRadius, typography, shadows } from '../../constants/theme';
 import { analytics } from '../../services/analytics.service';
@@ -20,20 +21,31 @@ import { analytics } from '../../services/analytics.service';
 export const ConcernResultsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { concernLabel, matchingProcedureSlugs = [] } = route.params || {};
+  const { concernId, concernLabel, selectedOptions = [], matchingProcedureSlugs = [] } = route.params || {};
 
   const [matchingProcedures, setMatchingProcedures] = useState<Procedure[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadMatchingProcedures();
-  }, [matchingProcedureSlugs]);
+  }, [concernId, selectedOptions, matchingProcedureSlugs]);
 
   const loadMatchingProcedures = async () => {
     setLoading(true);
-    const results = await proceduresService.getRelatedProcedures(matchingProcedureSlugs);
-    setMatchingProcedures(results);
-    setLoading(false);
+    try {
+      const recs = await recommendationService.getRecommendations({
+        concernId: concernId || 'skin',
+        selectedOptionIds: selectedOptions.length > 0 ? selectedOptions : matchingProcedureSlugs,
+        concernLabel,
+      });
+      setMatchingProcedures(recs.allMatching);
+    } catch (e) {
+      console.warn('Error fetching recommendations:', e);
+      const fallback = await proceduresService.getRelatedProcedures(matchingProcedureSlugs);
+      setMatchingProcedures(fallback);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleProcedurePress = (slug: string, name: string) => {
@@ -41,12 +53,25 @@ export const ConcernResultsScreen: React.FC = () => {
     navigation.navigate('ProcedureDetailModal', { procedureSlug: slug });
   };
 
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('MainTabs', { screen: 'HomeTab' });
+    }
+  };
+
   const handleRestart = () => {
     navigation.navigate('ConcernSelect');
   };
 
   const handleBrowseAll = () => {
-    navigation.navigate('ProceduresTab');
+    analytics.track('browse_all_procedures_pressed');
+    try {
+      navigation.navigate('MainTabs', { screen: 'ProceduresTab' });
+    } catch {
+      navigation.navigate('ProceduresTab');
+    }
   };
 
   return (
@@ -55,10 +80,20 @@ export const ConcernResultsScreen: React.FC = () => {
 
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerPill}>
-          <Sparkles size={12} color={colors.primaryDark} />
-          <Text style={styles.headerPillText}>DISCOVERY RESULTS</Text>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={handleBack}
+            style={styles.backBtn}
+          >
+            <ArrowLeft size={18} color={colors.text} />
+          </TouchableOpacity>
+          <View style={styles.headerPill}>
+            <Sparkles size={12} color={colors.primaryDark} />
+            <Text style={styles.headerPillText}>DISCOVERY RESULTS</Text>
+          </View>
         </View>
+
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={handleRestart}
@@ -115,6 +150,9 @@ export const ConcernResultsScreen: React.FC = () => {
           style={styles.browseAllBtn}
         />
       </ScrollView>
+
+      {/* Floating Back Button */}
+      <FloatingBackButton position="bottom-left" fallbackScreen="HomeTab" />
     </SafeAreaView>
   );
 };
@@ -128,10 +166,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  backBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   headerPill: {
     flexDirection: 'row',

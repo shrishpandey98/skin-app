@@ -61,9 +61,11 @@ export const ProceduresScreen: React.FC = () => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
-      p.name.toLowerCase().includes(q) ||
-      p.shortDescription.toLowerCase().includes(q) ||
-      p.commonUses.some((u) => u.toLowerCase().includes(q))
+      p.name?.toLowerCase().includes(q) ||
+      p.shortDescription?.toLowerCase().includes(q) ||
+      p.commonUses?.some((u) => u.toLowerCase().includes(q)) ||
+      p.category?.toLowerCase().includes(q) ||
+      p.categoryLabel?.toLowerCase().includes(q)
     );
   });
 

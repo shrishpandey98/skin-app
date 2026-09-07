@@ -122,7 +122,7 @@ export const iraRagService = {
       const proceduresContext = buildProcedureContext(allProcedures);
 
       // 2. Build strict grounding system prompt
-      const systemPrompt = `You are Ira, the certified AI Aesthetic & Dermatology Consultant for Aura Aesthetics Marketplace.
+      const systemPrompt = `You are Ira, the certified Aesthetic & Dermatology Consultant for Aura Aesthetics Marketplace.
 
 YOUR STRICT KNOWLEDGE BASE:
 Below is the verified list of procedures available at our partner clinics:
@@ -138,7 +138,16 @@ You are exclusively permitted to answer questions regarding FOUR specific aspect
 4. TREATMENT COMPARISONS (e.g. comparing 2 or more procedures on mechanism, indications, downtime, and longevity)
 
 CRITICAL INSTRUCTIONS:
-- COMPREHENSIVE MULTI-PART ANSWERS: If a user asks for multiple aspects (e.g. "Downtime, session schedule, expected benefits of Laser Hair Removal"), you MUST answer ALL requested aspects completely with clear, bold headers for each.
+- SPECIFIC QUERY DISCIPLINE (DO NOT DUMP UNSOLICITED INFO):
+  • If the user asks ONLY about **Downtime & Recovery** (e.g. "What is the downtime of Botox?"), answer ONLY the downtime and immediate recovery precautions. DO NOT include benefits or session schedule.
+  • If the user asks ONLY about **Session Schedule & Frequency** (e.g. "How many sessions for Laser Hair Removal?"), answer ONLY the session schedule and longevity. DO NOT include downtime or benefits.
+  • If the user asks ONLY about **Expected Clinical Benefits & Indications** (e.g. "What are the benefits of HydraFacial?"), answer ONLY the benefits and what it treats. DO NOT include downtime or sessions.
+  • If the user asks for multiple specific aspects (e.g. "Downtime and session schedule for Chemical Peels"), answer ALL and ONLY the requested aspects.
+  • If the user asks a broad or introductory question (e.g. "Tell me about Botox" or "What is Botox?"), you may provide a balanced summary covering benefits, downtime, and session schedule.
+  • If the user asks for an unlisted detail or an aspect outside the 4 scopes (e.g. "Which machine is used in laser hair removal?", "What is the price/cost?", "Who is the doctor?", "Can I eat before this?"):
+    DO NOT output benefits, downtime, or sessions to compensate.
+    Answer directly:
+    "I do not have specific information regarding that detail in our verified knowledge base. I can only provide information on downtime, session schedules, expected clinical benefits, and treatment comparisons of our listed procedures. Please consult directly with a board-certified dermatologist at our partner clinics for these details."
 - TREATMENT COMPARISONS: If asked to compare treatments (e.g. "Botox vs Fillers", "HydraFacial vs Chemical Peel"), provide a side-by-side comparison across:
   • **1. How They Work & Mechanism**
   • **2. Primary Indications & Best Suited For**
@@ -239,7 +248,7 @@ CRITICAL INSTRUCTIONS:
 
 // Fallback rule-based grounded engine if network is unreachable
 function generateLocalGroundedResponse(query: string, procedures: Procedure[]): string {
-  const q = query.toLowerCase();
+  const q = query.toLowerCase().trim();
   const matchedProcs = matchProceduresInQuery(query, procedures);
 
   // 1. Multi-Procedure Comparison
@@ -272,16 +281,21 @@ function generateLocalGroundedResponse(query: string, procedures: Procedure[]): 
       `**Summary:** Choose **${p1.name}** if your primary goal is ${p1.commonUses?.[0] || 'rejuvenation'}, or **${p2.name}** for ${p2.commonUses?.[0] || 'targeted contouring'}.`;
   }
 
-  // 2. Single Procedure Match: Comprehensive multi-aspect handler
+  // 2. Single Procedure Match: Specific aspect isolation
   if (matchedProcs.length === 1) {
     const matchedProc = matchedProcs[0];
+    const procNameLower = matchedProc.name.toLowerCase();
+    const procSlugLower = matchedProc.slug.replace(/-/g, ' ');
 
     const wantsDowntime =
       q.includes('downtime') ||
       q.includes('recovery') ||
-      q.includes('after') ||
+      q.includes('aftercare') ||
       q.includes('rest') ||
       q.includes('heal') ||
+      q.includes('swelling') ||
+      q.includes('bruis') ||
+      q.includes('redness') ||
       q.includes('side effect') ||
       q.includes('precaution');
 
@@ -291,6 +305,9 @@ function generateLocalGroundedResponse(query: string, procedures: Procedure[]): 
       q.includes('frequenc') ||
       q.includes('how many') ||
       q.includes('how often') ||
+      q.includes('interval') ||
+      q.includes('gap') ||
+      q.includes('spacing') ||
       q.includes('last') ||
       q.includes('longevity') ||
       q.includes('duration');
@@ -300,17 +317,40 @@ function generateLocalGroundedResponse(query: string, procedures: Procedure[]): 
       q.includes('advantage') ||
       q.includes('result') ||
       q.includes('indication') ||
-      q.includes('use') ||
-      q.includes('help') ||
-      q.includes('treat') ||
+      q.includes('what does it do') ||
       q.includes('good for') ||
+      q.includes('help with') ||
+      q.includes('treat') ||
       q.includes('purpose') ||
-      q.includes('what is');
+      q.includes('why should i get');
+
+    const isGeneral =
+      q === procNameLower ||
+      q === procSlugLower ||
+      q === `what is ${procNameLower}` ||
+      q === `what is ${procSlugLower}` ||
+      q === `tell me about ${procNameLower}` ||
+      q === `tell me about ${procSlugLower}` ||
+      q === `explain ${procNameLower}` ||
+      q === `explain ${procSlugLower}` ||
+      q.startsWith(`overview of ${procNameLower}`) ||
+      q.startsWith(`overview of ${procSlugLower}`);
+
+    // If query asks for a specific detail not in the 4 scopes (e.g. machine, doctor, price, ingredients)
+    if (!wantsDowntime && !wantsSessions && !wantsBenefits && !isGeneral) {
+      return `I do not have specific information regarding that detail for **${matchedProc.name}** in our verified knowledge base.\n\n` +
+        `I am specialized to assist you strictly with:\n` +
+        `• **Downtime & Recovery Protocols**\n` +
+        `• **Session Schedules & Longevity**\n` +
+        `• **Expected Clinical Benefits & Indications**\n` +
+        `• **Treatment Comparisons**\n\n` +
+        `For equipment specifications or clinical inquiries, please consult directly with a board-certified dermatologist at one of our partner clinics.`;
+    }
 
     const parts: string[] = [];
 
-    // If specific questions were asked or if it's a multi-part query
-    if (wantsBenefits || (!wantsDowntime && !wantsSessions)) {
+    // Only include benefits if explicitly asked or if general overview
+    if (wantsBenefits || isGeneral) {
       parts.push(
         `**Expected Clinical Benefits & Uses:**\n` +
           (matchedProc.benefits && matchedProc.benefits.length > 0
@@ -319,7 +359,8 @@ function generateLocalGroundedResponse(query: string, procedures: Procedure[]): 
       );
     }
 
-    if (wantsDowntime || (!wantsBenefits && !wantsSessions)) {
+    // Only include downtime if explicitly asked or if general overview
+    if (wantsDowntime || isGeneral) {
       const precautions =
         matchedProc.considerations && matchedProc.considerations.length > 0
           ? `\n\n**Clinical Precautions:**\n` +
@@ -328,7 +369,8 @@ function generateLocalGroundedResponse(query: string, procedures: Procedure[]): 
       parts.push(`**Downtime & Recovery:**\n${matchedProc.downtime}${precautions}`);
     }
 
-    if (wantsSessions || (!wantsBenefits && !wantsDowntime)) {
+    // Only include sessions if explicitly asked or if general overview
+    if (wantsSessions || isGeneral) {
       parts.push(`**Session Schedule & Frequency:**\n${matchedProc.sessionsInfo}`);
     }
 

@@ -136,9 +136,6 @@ export const IraChatScreen: React.FC = () => {
           <View>
             <View style={styles.titleRow}>
               <Text style={styles.headerTitle}>Ira</Text>
-              <View style={styles.aiBadge}>
-                <Text style={styles.aiBadgeText}>AI Consultant</Text>
-              </View>
             </View>
             <View style={styles.statusRow}>
               <View style={styles.onlineDot} />

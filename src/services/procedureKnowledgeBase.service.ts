@@ -5,7 +5,7 @@ import { PROCEDURES_KNOWLEDGE_BASE } from '../data/procedures.data';
 const SHEET_CSV_URL =
   'https://docs.google.com/spreadsheets/d/1W26C7Znao0cKC-smQmmP37D4tNxnhfH-/export?format=csv';
 
-const STORAGE_KEY = '@aura_live_procedures_knowledge_base_v2';
+const STORAGE_KEY = '@aura_live_procedures_knowledge_base_v4';
 const LAST_FETCHED_KEY = '@aura_live_procedures_last_fetched';
 const CACHE_TTL_MS = 1000 * 60 * 15; // 15 minutes fresh cache
 
@@ -105,9 +105,15 @@ class ProcedureKnowledgeBaseService {
       const cached = await AsyncStorage.getItem(STORAGE_KEY);
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed) && parsed.length >= PROCEDURES_KNOWLEDGE_BASE.length) {
           this.inMemoryProcedures = parsed;
+        } else {
+          this.inMemoryProcedures = PROCEDURES_KNOWLEDGE_BASE;
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(PROCEDURES_KNOWLEDGE_BASE));
         }
+      } else {
+        this.inMemoryProcedures = PROCEDURES_KNOWLEDGE_BASE;
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(PROCEDURES_KNOWLEDGE_BASE));
       }
 
       this.isInitialized = true;
@@ -120,6 +126,7 @@ class ProcedureKnowledgeBaseService {
       }
     } catch (e) {
       console.warn('[KnowledgeBase] Local init fallback to bundled data', e);
+      this.inMemoryProcedures = PROCEDURES_KNOWLEDGE_BASE;
       this.isInitialized = true;
     }
   }
@@ -156,14 +163,26 @@ class ProcedureKnowledgeBaseService {
         const name = (r['Procedure Name'] || '').trim();
         if (!name) return;
 
-        const id = (r['ID'] || `proc_${index + 1}`).trim();
-        const slug = (
+        const rawId = (r['ID'] || `proc_${index + 1}`).trim();
+        const rawSlug = (
           r['Slug'] ||
           name
             .toLowerCase()
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/(^-|-$)/g, '')
         ).trim();
+
+        let slug = rawSlug;
+        let counter = 1;
+        while (procedures.some((p) => p.slug === slug)) {
+          slug = `${rawSlug}-${counter++}`;
+        }
+
+        let id = rawId;
+        counter = 1;
+        while (procedures.some((p) => p.id === id)) {
+          id = `${rawId}_${counter++}`;
+        }
 
         const category = (r['Category'] || 'skin').trim().toLowerCase() as ProcedureCategory;
         const categoryLabel = (r['Category Label'] || category.toUpperCase()).trim();
@@ -238,7 +257,11 @@ class ProcedureKnowledgeBaseService {
     forceRefresh: boolean = false,
     forClinicId?: string
   ): Promise<Procedure[]> {
-    if (forceRefresh || !this.isInitialized) {
+    if (this.inMemoryProcedures.length < PROCEDURES_KNOWLEDGE_BASE.length) {
+      this.inMemoryProcedures = PROCEDURES_KNOWLEDGE_BASE;
+    }
+
+    if (forceRefresh) {
       await this.fetchLiveSheet(forceRefresh);
     }
 

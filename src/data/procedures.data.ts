@@ -758,9 +758,9 @@ export const PROCEDURES_KNOWLEDGE_BASE: Procedure[] = [
     "addedByName": "System"
   },
   {
-    "id": "proc_laser_toning",
-    "name": "Laser Toning",
-    "slug": "laser-toning",
+    "id": "proc_laser_toning_facial",
+    "name": "Laser Toning (Facial Rejuvenation)",
+    "slug": "laser-toning-facial",
     "category": "skin",
     "categoryLabel": "Facial & Skin Rejuvenation",
     "shortDescription": "Low-fluence laser treatment used to target unwanted pigmentation and improve overall skin tone.",
@@ -1477,9 +1477,9 @@ export const PROCEDURES_KNOWLEDGE_BASE: Procedure[] = [
     "addedByName": "System"
   },
   {
-    "id": "proc_acne-scar-treatment",
-    "name": "Acne Scar Treatment",
-    "slug": "acne-scar-treatment",
+    "id": "proc_acne_scar_comprehensive",
+    "name": "Acne Scar Treatment (Comprehensive)",
+    "slug": "acne-scar-comprehensive",
     "category": "skin",
     "categoryLabel": "Acne & Acne Scar Procedures",
     "shortDescription": "Personalized treatment plan combining procedures according to acne-scar type and severity.",
@@ -1521,9 +1521,9 @@ export const PROCEDURES_KNOWLEDGE_BASE: Procedure[] = [
     "addedByName": "System"
   },
   {
-    "id": "proc_microneedling",
-    "name": "Microneedling",
-    "slug": "microneedling",
+    "id": "proc_microneedling_collagen",
+    "name": "Microneedling (Collagen Induction)",
+    "slug": "microneedling-collagen",
     "category": "skin",
     "categoryLabel": "Acne & Acne Scar Procedures",
     "shortDescription": "Collagen-induction procedure using fine needles to create controlled micro-injuries in the skin.",
@@ -1816,9 +1816,9 @@ export const PROCEDURES_KNOWLEDGE_BASE: Procedure[] = [
     "addedByName": "System"
   },
   {
-    "id": "proc_dermal-fillers",
-    "name": "Dermal Fillers",
-    "slug": "dermal-fillers",
+    "id": "proc_dermal_fillers_contouring",
+    "name": "Dermal Fillers (Facial Contouring)",
+    "slug": "dermal-fillers-contouring",
     "category": "aesthetics",
     "categoryLabel": "Anti-Aging & Facial Aesthetics",
     "shortDescription": "Injectable materials used to restore volume, soften selected lines and enhance facial contours.",
