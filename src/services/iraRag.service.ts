@@ -514,36 +514,113 @@ function generateLocalGroundedResponse(query: string, procedures: Procedure[]): 
       parts.join('\n\n');
   }
 
-  // 3. Concern search (Exclude laser hair removal from hair fall / thinning queries)
-  const isHairFallQuery = q.includes('hair fall') || q.includes('hair loss') || q.includes('thinning') || q.includes('scalp') || q.includes('shedding');
+  // 3. Medical Prescription & Clinical Disease Refusal Guardrail
+  const isPrescriptionOrMedical =
+    q.includes('prescribe') ||
+    q.includes('prescription') ||
+    q.includes('antibiotic') ||
+    q.includes('steroid') ||
+    q.includes('medicine') ||
+    q.includes('medication') ||
+    q.includes('tablet') ||
+    q.includes('pill') ||
+    q.includes('dosage') ||
+    q.includes('infection') ||
+    q.includes('bacterial') ||
+    q.includes('fungal') ||
+    q.includes('eczema') ||
+    q.includes('psoriasis') ||
+    q.includes('dermatitis') ||
+    q.includes('skin cancer') ||
+    q.includes('melanoma') ||
+    q.includes('rash') ||
+    q.includes('diagnos') ||
+    q.includes('disease') ||
+    q.includes('fever');
 
-  const concernMatches = procedures.filter((p) => {
-    if (isHairFallQuery && p.slug.includes('hair-removal')) return false;
-    return p.commonUses?.some((u) => q.split(' ').some((word) => word.length > 3 && u.toLowerCase().includes(word)));
-  });
+  if (isPrescriptionOrMedical) {
+    return `I cannot prescribe medications, formulate medical prescriptions, or diagnose clinical conditions.\n\n` +
+      `I am specialized strictly to provide information regarding **downtime**, **session schedules**, **expected clinical benefits**, and **treatment comparisons** for verified aesthetic treatments in our catalog (such as Botox, Dermal Fillers, HydraFacial, Laser Hair Removal, Chemical Peels, Microneedling RF, and PRP).\n\n` +
+      `For medical skin conditions, bacterial infections, or prescription treatments, please consult directly with a board-certified dermatologist at one of our partner clinics.`;
+  }
 
-  if (concernMatches.length > 0) {
-    const top = concernMatches.slice(0, 2);
-    return `Based on our verified clinical catalog, here are the recommended procedures for your concern:\n\n${top
+  // 4. Non-Aesthetic Trivia Refusal Guardrail
+  const isGeneralTrivia =
+    q.includes('weather') ||
+    q.includes('prime minister') ||
+    q.includes('president') ||
+    q.includes('cricket') ||
+    q.includes('football') ||
+    q.includes('stock') ||
+    q.includes('recipe') ||
+    q.includes('python') ||
+    q.includes('coding') ||
+    q.includes('javascript') ||
+    q.includes('capital of') ||
+    q.includes('movie') ||
+    q.includes('song') ||
+    q.includes('news');
+
+  if (isGeneralTrivia) {
+    return `I am specialized to assist you strictly with questions regarding **downtime**, **session schedules**, **expected clinical benefits**, and **treatment comparisons** of aesthetic treatments in our clinic catalog.\n\nI do not provide general trivia or non-aesthetic information. Which treatment or aesthetic goal would you like to explore today?`;
+  }
+
+  // 5. Aesthetic Concern Matching (Curated clinical keywords only, no generic stop-words)
+  const isHairFallQuery = q.includes('hair fall') || q.includes('hair loss') || q.includes('thinning') || q.includes('scalp') || q.includes('shedding') || q.includes('baldness');
+  const isAcneQuery = q.includes('acne') || q.includes('pimple') || q.includes('breakout') || q.includes('blackhead') || q.includes('comedone');
+  const isPigmentQuery = q.includes('pigmentation') || q.includes('melasma') || q.includes('dark spot') || q.includes('hyperpigmentation') || q.includes('sun spot') || q.includes('tan');
+  const isGlowQuery = q.includes('glow') || q.includes('dull') || q.includes('radiance') || q.includes('brighten') || q.includes('luminos') || q.includes('glass skin');
+  const isWrinkleQuery = q.includes('wrinkle') || q.includes('fine line') || q.includes('anti ageing') || q.includes('anti aging') || q.includes('sagging') || q.includes('tighten') || q.includes('lifting');
+  const isPoresQuery = q.includes('open pore') || q.includes('large pore') || q.includes('pore') || q.includes('texture') || q.includes('rough');
+
+  let curatedConcernMatches: Procedure[] = [];
+
+  if (isHairFallQuery) {
+    curatedConcernMatches = procedures.filter((p) => p.slug.includes('prp') && !p.slug.includes('facial'));
+  } else if (isAcneQuery) {
+    curatedConcernMatches = procedures.filter((p) =>
+      ['salicylic-peel', 'chemical-peel', 'carbon-laser-peel', 'hydrafacial', 'rf-microneedling'].includes(p.slug)
+    );
+  } else if (isPigmentQuery) {
+    curatedConcernMatches = procedures.filter((p) =>
+      ['q-switched-laser', 'laser-toning', 'chemical-peel', 'glutathione-iv-therapy', 'carbon-laser-peel'].includes(p.slug)
+    );
+  } else if (isGlowQuery) {
+    curatedConcernMatches = procedures.filter((p) =>
+      ['hydrafacial', 'skin-brightening', 'carbon-laser-peel', 'profhilo'].includes(p.slug)
+    );
+  } else if (isWrinkleQuery) {
+    curatedConcernMatches = procedures.filter((p) =>
+      ['botox', 'dermal-fillers', 'hifu', 'rf-microneedling', 'profhilo'].includes(p.slug)
+    );
+  } else if (isPoresQuery) {
+    curatedConcernMatches = procedures.filter((p) =>
+      ['rf-microneedling', 'carbon-laser-peel', 'hydrafacial', 'chemical-peel'].includes(p.slug)
+    );
+  }
+
+  if (curatedConcernMatches.length > 0) {
+    const top = curatedConcernMatches.slice(0, 3);
+    return `Based on our verified clinical knowledge base, here are top doctor-recommended treatments for your concern:\n\n${top
       .map(
         (p) =>
           `• **${p.name}** (${p.categoryLabel || p.category}):\n  - **Benefits:** ${p.shortDescription}\n  - **Downtime:** ${p.downtime}\n  - **Sessions:** ${p.sessionsInfo}`
       )
-      .join('\n\n')}\n\nWould you like more details on downtime, session schedule, or benefits for any of these?`;
+      .join('\n\n')}\n\nWould you like more details on downtime, session schedules, or benefits for any of these?`;
   }
 
-  // 4. General greeting
+  // 6. General greeting
   if (q === 'hi' || q === 'hello' || q === 'hey' || q.includes('who are you')) {
-    return `Hello! I am **Ira**, your aesthetic procedure consultant. I can assist you with:\n\n` +
+    return `Hello! I am **Ira**, your aesthetic treatment consultant. I can assist you with:\n\n` +
       `• **Downtime & Recovery Protocols**\n` +
       `• **Session Schedules & Longevity**\n` +
       `• **Expected Clinical Benefits & Indications**\n` +
-      `• **Treatment Comparisons (e.g. Botox vs Fillers)**\n\n` +
-      `Which verified procedure would you like to explore today?`;
+      `• **Treatment Comparisons (e.g. HydraFacial vs Chemical Peel, Botox vs Fillers)**\n\n` +
+      `Which treatment or skin/hair goal would you like to explore today?`;
   }
 
-  // 5. Out of scope refusal
-  return `I am specialized to provide information strictly regarding **downtime**, **session schedules**, **expected benefits**, and **treatment comparisons** of verified procedures in our clinic knowledge base (such as **Botox**, **Dermal Fillers**, **HydraFacial**, **Laser Hair Removal**, **Chemical Peels**, **Microneedling RF**, and **PRP Hair Therapy**).\n\nFor other specific clinical or medical inquiries, please consult directly with a board-certified dermatologist at one of our partner clinics.`;
+  // 7. General Out of Scope Refusal
+  return `I am specialized to provide information strictly regarding **downtime**, **session schedules**, **expected clinical benefits**, and **treatment comparisons** of verified aesthetic treatments in our clinic knowledge base (such as **Botox**, **Dermal Fillers**, **HydraFacial**, **Laser Hair Removal**, **Chemical Peels**, **Microneedling RF**, and **PRP Hair Therapy**).\n\nFor other specific clinical or medical inquiries, please consult directly with a board-certified dermatologist at one of our partner clinics.`;
 }
 
 function generateFollowUps(referenced: Procedure[]): string[] {
