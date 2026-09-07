@@ -17,13 +17,8 @@ import {
   Calendar,
   Bookmark,
   User,
-  HelpCircle,
-  Settings,
   LogOut,
   ChevronRight,
-  ShieldCheck,
-  Phone,
-  Building2,
 } from 'lucide-react-native';
 import { useAuthStore } from '../../stores/auth.store';
 import { useAppointmentsStore } from '../../stores/appointments.store';
@@ -142,7 +137,7 @@ export const ProfileScreen: React.FC = () => {
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => navigation.navigate('SavedItems')}
-            style={styles.menuItem}
+            style={[styles.menuItem, { borderBottomWidth: 0 }]}
           >
             <View style={[styles.iconBox, { backgroundColor: colors.secondaryLight }]}>
               <Bookmark size={18} color={colors.secondary} />
@@ -155,41 +150,12 @@ export const ProfileScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Section 2: Clinic Partner Portal Switcher */}
-        <View style={styles.menuGroup}>
-          <TouchableOpacity
-            activeOpacity={0.88}
-            onPress={() => {
-              const { setDoctorMode } = require('../../stores/doctor.store').useDoctorStore.getState();
-              setDoctorMode(true);
-              navigation.navigate('DoctorApp');
-            }}
-            style={[styles.menuItem, { backgroundColor: '#FAF6EE' }]}
-          >
-            <View style={[styles.iconBox, { backgroundColor: colors.primaryLight }]}>
-              <Building2 size={18} color={colors.primary} />
-            </View>
-            <View style={styles.menuTextCol}>
-              <Text style={[styles.menuTitle, { color: colors.primaryDark }]}>
-                Clinic Partner Portal
-              </Text>
-              <Text style={styles.menuSubtitle}>
-                Dr. Purva's Skin & Laser Clinic • Doctors, Queue & Pricing
-              </Text>
-            </View>
-            <View style={styles.doctorBadge}>
-              <Text style={styles.doctorBadgeText}>CLINIC</Text>
-            </View>
-            <ChevronRight size={18} color={colors.primary} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Section 3: Account Settings */}
+        {/* Section 2: Account Settings */}
         <View style={styles.menuGroup}>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => navigation.navigate('PersonalDetails')}
-            style={styles.menuItem}
+            style={[styles.menuItem, { borderBottomWidth: 0 }]}
           >
             <View style={[styles.iconBox, { backgroundColor: '#F3F4F6' }]}>
               <User size={18} color={colors.text} />
@@ -197,21 +163,6 @@ export const ProfileScreen: React.FC = () => {
             <View style={styles.menuTextCol}>
               <Text style={styles.menuTitle}>Personal Details</Text>
               <Text style={styles.menuSubtitle}>Name, mobile, email, city</Text>
-            </View>
-            <ChevronRight size={18} color={colors.textMuted} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => Alert.alert('Help & Support', 'Call concierge support at +91 172 450 8899 or email care@auraaesthetics.app')}
-            style={styles.menuItem}
-          >
-            <View style={[styles.iconBox, { backgroundColor: '#F3F4F6' }]}>
-              <HelpCircle size={18} color={colors.text} />
-            </View>
-            <View style={styles.menuTextCol}>
-              <Text style={styles.menuTitle}>Help & Patient Support</Text>
-              <Text style={styles.menuSubtitle}>FAQs, clinic queries & contact</Text>
             </View>
             <ChevronRight size={18} color={colors.textMuted} />
           </TouchableOpacity>
@@ -392,19 +343,6 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSizes.micro,
     color: '#226D3C',
     fontWeight: typography.fontWeights.bold,
-  },
-  doctorBadge: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: borderRadius.pill,
-    marginRight: 8,
-  },
-  doctorBadgeText: {
-    fontSize: typography.fontSizes.micro - 1,
-    color: colors.textInverse,
-    fontWeight: typography.fontWeights.heavy,
-    letterSpacing: 0.5,
   },
   logoutBtn: {
     flexDirection: 'row',

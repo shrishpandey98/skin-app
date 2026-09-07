@@ -12,9 +12,9 @@ export const PROCEDURE_CATEGORIES: CategoryItem[] = [
   {
     id: 'all',
     name: 'All',
-    label: 'All Procedures',
+    label: 'All Treatments',
     iconName: 'sparkles',
-    description: 'Explore all 67 procedures in the clinical knowledge base',
+    description: 'Explore all 67 treatments in the clinical knowledge base',
     color: '#8A7032',
     bgColor: '#FAF4E6',
   },

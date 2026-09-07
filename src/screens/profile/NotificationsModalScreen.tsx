@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,38 +9,19 @@ import {
   StatusBar,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { X, Bell, CheckCircle2, Calendar, Sparkles } from 'lucide-react-native';
+import { X, Bell, CheckCircle2, Calendar, Sparkles, Trash2, CheckCheck } from 'lucide-react-native';
 import { colors, borderRadius, typography, shadows } from '../../constants/theme';
-
-const MOCK_NOTIFICATIONS = [
-  {
-    id: 'notif_1',
-    type: 'booking',
-    title: 'Consultation Confirmed',
-    body: 'Your in-clinic booking with Dr. Ananya Sharma at Aesthetica Skin Clinic is confirmed for Sep 12, 03:30 PM.',
-    time: '2 hours ago',
-    isRead: false,
-  },
-  {
-    id: 'notif_2',
-    type: 'reminder',
-    title: 'Treatment Reminder',
-    body: 'Drink plenty of water before your Hydrafacial session for optimal results.',
-    time: '1 day ago',
-    isRead: true,
-  },
-  {
-    id: 'notif_3',
-    type: 'system',
-    title: 'Welcome to Aura Aesthetics',
-    body: 'Discover Chandigarh’s top verified aesthetic dermatologists and transparent procedure pricing.',
-    time: '3 days ago',
-    isRead: true,
-  },
-];
+import { useNotificationsStore } from '../../stores/notifications.store';
+import { EmptyState } from '../../components/states/EmptyState';
 
 export const NotificationsModalScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const { notifications, loadNotifications, clearAllNotifications, markAllAsRead, isLoaded } =
+    useNotificationsStore();
+
+  useEffect(() => {
+    loadNotifications();
+  }, []);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -52,7 +33,18 @@ export const NotificationsModalScreen: React.FC = () => {
           <X size={20} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifications</Text>
-        <View style={styles.placeholder} />
+        {notifications.length > 0 ? (
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={clearAllNotifications}
+            style={styles.clearBtn}
+          >
+            <Trash2 size={16} color={colors.textSecondary} />
+            <Text style={styles.clearBtnText}>Clear</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.placeholder} />
+        )}
       </View>
 
       <ScrollView
@@ -60,49 +52,61 @@ export const NotificationsModalScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.list}>
-          {MOCK_NOTIFICATIONS.map((item) => (
-            <View
-              key={item.id}
-              style={[
-                styles.notifCard,
-                !item.isRead ? styles.unreadCard : styles.readCard,
-                shadows.subtle,
-              ]}
-            >
+        {notifications.length === 0 ? (
+          <View style={styles.emptyWrapper}>
+            <View style={styles.emptyIconCircle}>
+              <Bell size={28} color={colors.primary} />
+            </View>
+            <Text style={styles.emptyTitle}>All Caught Up</Text>
+            <Text style={styles.emptySubtitle}>
+              You have no active notifications. Important consultation reminders and updates will appear here.
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.list}>
+            {notifications.map((item) => (
               <View
+                key={item.id}
                 style={[
-                  styles.iconCircle,
-                  {
-                    backgroundColor:
-                      item.type === 'booking'
-                        ? '#EAF7EE'
-                        : item.type === 'reminder'
-                        ? colors.primaryLight
-                        : colors.secondaryLight,
-                  },
+                  styles.notifCard,
+                  !item.isRead ? styles.unreadCard : styles.readCard,
+                  shadows.subtle,
                 ]}
               >
-                {item.type === 'booking' ? (
-                  <CheckCircle2 size={18} color="#2D8A4E" />
-                ) : item.type === 'reminder' ? (
-                  <Calendar size={18} color={colors.primaryDark} />
-                ) : (
-                  <Sparkles size={18} color={colors.secondary} />
-                )}
-              </View>
-
-              <View style={styles.textCol}>
-                <View style={styles.topRow}>
-                  <Text style={styles.title}>{item.title}</Text>
-                  {!item.isRead ? <View style={styles.unreadDot} /> : null}
+                <View
+                  style={[
+                    styles.iconCircle,
+                    {
+                      backgroundColor:
+                        item.type === 'booking'
+                          ? '#EAF7EE'
+                          : item.type === 'reminder'
+                          ? colors.primaryLight
+                          : colors.secondaryLight,
+                    },
+                  ]}
+                >
+                  {item.type === 'booking' ? (
+                    <CheckCircle2 size={18} color="#2D8A4E" />
+                  ) : item.type === 'reminder' ? (
+                    <Calendar size={18} color={colors.primaryDark} />
+                  ) : (
+                    <Sparkles size={18} color={colors.secondary} />
+                  )}
                 </View>
-                <Text style={styles.body}>{item.body}</Text>
-                <Text style={styles.time}>{item.time}</Text>
+
+                <View style={styles.textCol}>
+                  <View style={styles.topRow}>
+                    <Text style={styles.title}>{item.title}</Text>
+                    {!item.isRead ? <View style={styles.unreadDot} /> : null}
+                  </View>
+                  <Text style={styles.body}>{item.body}</Text>
+                  <Text style={styles.time}>{item.time}</Text>
+                </View>
               </View>
-            </View>
-          ))}
-        </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -133,12 +137,51 @@ const styles = StyleSheet.create({
   placeholder: {
     width: 32,
   },
+  clearBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  clearBtnText: {
+    fontSize: typography.fontSizes.caption,
+    color: colors.textSecondary,
+    fontWeight: typography.fontWeights.medium,
+  },
   container: {
     flex: 1,
   },
   scrollContent: {
     padding: 18,
     paddingBottom: 40,
+  },
+  emptyWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 24,
+  },
+  emptyIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: typography.fontSizes.h3,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.text,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: typography.fontSizes.body - 1,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   list: {
     gap: 12,

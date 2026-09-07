@@ -95,7 +95,7 @@ export const ConcernSelectScreen: React.FC = () => {
         {/* Disclaimer / Compliance Notice */}
         <View style={styles.disclaimerBox}>
           <Text style={styles.disclaimerText}>
-            💡 Note: This tool provides general treatment discovery and procedure education. It does not replace a doctor’s clinical diagnosis.
+            💡 Note: This tool provides general treatment discovery and education. It does not replace a doctor’s clinical diagnosis.
           </Text>
         </View>
       </ScrollView>

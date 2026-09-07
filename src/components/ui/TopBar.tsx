@@ -7,6 +7,7 @@ import { useLocationStore } from '../../stores/location.store';
 import { useAppointmentsStore } from '../../stores/appointments.store';
 import { proceduresService } from '../../services/procedures.service';
 import { useDoctorStore } from '../../stores/doctor.store';
+import { useNotificationsStore } from '../../stores/notifications.store';
 
 interface TopBarProps {
   showLocation?: boolean;
@@ -19,6 +20,13 @@ export const TopBar: React.FC<TopBarProps> = ({ showLocation = true, title, onRe
   const { selectedCity } = useLocationStore();
   const { initializeAppointments } = useAppointmentsStore();
   const { initializeDoctorPortal } = useDoctorStore();
+  const { notifications, loadNotifications } = useNotificationsStore();
+
+  useEffect(() => {
+    loadNotifications();
+  }, []);
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const [refreshing, setRefreshing] = useState(false);
   const spinValue = React.useRef(new Animated.Value(0)).current;
@@ -123,7 +131,7 @@ export const TopBar: React.FC<TopBarProps> = ({ showLocation = true, title, onRe
           style={[styles.iconButton, shadows.subtle]}
         >
           <Bell size={18} color={colors.text} />
-          <View style={styles.badgeDot} />
+          {unreadCount > 0 ? <View style={styles.badgeDot} /> : null}
         </TouchableOpacity>
 
         <TouchableOpacity

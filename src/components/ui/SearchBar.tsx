@@ -25,7 +25,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   value = '',
   onChangeText,
   onClear,
-  placeholder = 'Search procedures, clinics or concerns...',
+  placeholder = 'Search treatments, clinics or concerns...',
   onPress,
   isTouchableOnly = false,
   autoFocus = false,

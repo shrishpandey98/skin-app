@@ -154,7 +154,7 @@ export const ClinicCard: React.FC<ClinicCardProps> = ({
 
         {!specificPricing ? (
           <View style={styles.footerRow}>
-            <Text style={styles.viewProfileText}>View Clinic Profile & Procedures</Text>
+            <Text style={styles.viewProfileText}>View Clinic Profile & Treatments</Text>
             <TouchableOpacity
               activeOpacity={0.82}
               onPress={onBookPress || onPress}

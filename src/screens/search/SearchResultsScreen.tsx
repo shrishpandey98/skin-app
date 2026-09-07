@@ -113,7 +113,7 @@ export const SearchResultsScreen: React.FC = () => {
           value={query}
           onChangeText={setQuery}
           onClear={() => setQuery('')}
-          placeholder="Search procedures, clinics or concerns..."
+          placeholder="Search treatments, clinics or concerns..."
           autoFocus
           style={styles.searchBar}
         />
@@ -151,13 +151,13 @@ export const SearchResultsScreen: React.FC = () => {
         {/* Results Sections */}
         {hasSearched && (
           <View style={styles.resultsWrapper}>
-            {/* 1. Procedures Results */}
+            {/* 1. Treatments Results */}
             {results.procedures.length > 0 ? (
               <View style={styles.sectionBlock}>
                 <View style={styles.sectionHeaderRow}>
                   <Sparkles size={16} color={colors.primary} />
                   <Text style={styles.sectionTitle}>
-                    Procedures ({results.procedures.length})
+                    Treatments ({results.procedures.length})
                   </Text>
                 </View>
                 {results.procedures.map((proc) => (
@@ -239,7 +239,7 @@ export const SearchResultsScreen: React.FC = () => {
             {results.totalCount === 0 ? (
               <EmptyState
                 title="No search results"
-                description={`We couldn't find any procedures, clinics, doctors or concerns matching "${query}".`}
+                description={`We couldn't find any treatments, clinics, doctors or concerns matching "${query}".`}
                 actionText="Clear Search"
                 onActionPress={() => setQuery('')}
               />

@@ -105,7 +105,7 @@ export const SelectProcedureScreen: React.FC = () => {
           ) : null}
         </TouchableOpacity>
 
-        <Text style={styles.orDivider}>OR SELECT A SPECIFIC PROCEDURE</Text>
+        <Text style={styles.orDivider}>OR SELECT A SPECIFIC TREATMENT</Text>
 
         {/* Procedures List */}
         <View style={styles.proceduresList}>

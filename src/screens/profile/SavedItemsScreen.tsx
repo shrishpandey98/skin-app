@@ -110,7 +110,7 @@ export const SavedItemsScreen: React.FC = () => {
               icon={<Bookmark size={32} color={colors.primary} />}
               title="No saved treatments"
               description="Bookmark aesthetic treatments you want to learn more about."
-              actionText="Explore Procedures"
+              actionText="Explore Treatments"
               onActionPress={() =>
                 navigation.getParent()?.navigate('MainTabs', { screen: 'ProceduresTab' })
               }

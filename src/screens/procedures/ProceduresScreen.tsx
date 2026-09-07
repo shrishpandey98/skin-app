@@ -80,7 +80,7 @@ export const ProceduresScreen: React.FC = () => {
       <TopBar onRefresh={handleRefresh} />
 
       <View style={styles.header}>
-        <Text style={styles.title}>Explore Procedures</Text>
+        <Text style={styles.title}>Explore Treatments</Text>
         <Text style={styles.subtitle}>
           Learn about medical aesthetic treatments & find verified clinics offering them.
         </Text>
@@ -130,13 +130,13 @@ export const ProceduresScreen: React.FC = () => {
         ListEmptyComponent={
           !loading ? (
             <EmptyState
-              title="No procedures found"
+              title="No treatments found"
               description={
                 searchQuery
                   ? `No treatments matching "${searchQuery}". Try searching for acne, glow, or anti-ageing.`
                   : 'No treatments found in this category.'
               }
-              actionText="Show All Procedures"
+              actionText="Show All Treatments"
               onActionPress={() => {
                 setSelectedCategory('all');
                 setSearchQuery('');

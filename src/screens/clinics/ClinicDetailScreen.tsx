@@ -223,7 +223,7 @@ export const ClinicDetailScreen: React.FC = () => {
           <View style={styles.sectionBlock}>
             <View style={styles.proceduresHeaderRow}>
               <View>
-                <Text style={styles.sectionTitle}>Procedures & Pricing</Text>
+                <Text style={styles.sectionTitle}>Treatments & Pricing</Text>
                 <Text style={styles.sectionSubtitle}>
                   Transparent clinic-specific rates & transparent packages
                 </Text>

@@ -288,7 +288,7 @@ export const HomeScreen: React.FC = () => {
            ───────────────────────────────────────────────────────────── */}
         <View style={styles.proceduresSection}>
           <SectionHeader
-            title="Common Procedures"
+            title="Common Treatments"
             actionText="View All"
             onActionPress={handleExploreProcedures}
           />

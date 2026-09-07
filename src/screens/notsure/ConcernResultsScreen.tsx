@@ -115,7 +115,7 @@ export const ConcernResultsScreen: React.FC = () => {
             These treatments may be relevant to your concern
           </Text>
           <Text style={styles.heroSubtitle}>
-            Based on your preference for {concernLabel || 'aesthetic improvement'}, dermatologists frequently explore the following procedures:
+            Based on your preference for {concernLabel || 'aesthetic improvement'}, dermatologists frequently explore the following treatments:
           </Text>
         </View>
 
@@ -137,14 +137,14 @@ export const ConcernResultsScreen: React.FC = () => {
             <Text style={styles.nextStepsTitle}>How to Proceed</Text>
           </View>
           <Text style={styles.nextStepsText}>
-            1. Tap on any procedure above to read what to expect, downtime & FAQs.{'\n'}
+            1. Tap on any treatment above to read what to expect, downtime & FAQs.{'\n'}
             2. Compare verified clinics offering that treatment in Chandigarh.{'\n'}
             3. Book a zero-commitment in-clinic consultation for personalized advice.
           </Text>
         </View>
 
         <PrimaryButton
-          title="Browse All Procedures Directory"
+          title="Browse All Treatments Directory"
           onPress={handleBrowseAll}
           variant="secondary"
           style={styles.browseAllBtn}

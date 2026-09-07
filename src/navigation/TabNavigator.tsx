@@ -36,7 +36,7 @@ export const TabNavigator: React.FC = () => {
         name="ProceduresTab"
         component={ProceduresScreen}
         options={{
-          tabBarLabel: 'Procedures',
+          tabBarLabel: 'Treatments',
           tabBarIcon: ({ color, size, focused }) => (
             <Stethoscope size={22} color={color} />
           ),

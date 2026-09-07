@@ -90,7 +90,7 @@ export const ProcedureDetailScreen: React.FC = () => {
   if (loading || !procedure) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <LoadingState message="Loading procedure details & verified clinics..." />
+        <LoadingState message="Loading treatment details & verified clinics..." />
       </SafeAreaView>
     );
   }
