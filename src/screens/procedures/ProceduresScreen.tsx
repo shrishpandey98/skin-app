@@ -36,6 +36,8 @@ export const ProceduresScreen: React.FC = () => {
 
   const [allProcedures, setAllProcedures] = useState<Procedure[]>([]);
 
+  const [displayLimit, setDisplayLimit] = useState(20);
+
   useEffect(() => {
     if (route.params?.initialCategory) {
       setSelectedCategory(route.params.initialCategory);
@@ -43,8 +45,13 @@ export const ProceduresScreen: React.FC = () => {
   }, [route.params?.initialCategory]);
 
   useEffect(() => {
+    setDisplayLimit(20);
     loadProcedures();
   }, [selectedCategory]);
+
+  useEffect(() => {
+    setDisplayLimit(20);
+  }, [searchQuery]);
 
   const loadProcedures = async (force: boolean = false) => {
     if (!force) setLoading(true);
@@ -75,6 +82,15 @@ export const ProceduresScreen: React.FC = () => {
     );
   });
 
+  const displayedProcedures = filteredProcedures.slice(0, displayLimit);
+  const hasMore = displayLimit < filteredProcedures.length;
+
+  const handleLoadMore = () => {
+    if (hasMore) {
+      setDisplayLimit((prev) => Math.min(prev + 20, filteredProcedures.length));
+    }
+  };
+
   const getCategoryCount = (catId: string) => {
     if (catId === 'all') return allProcedures.length || 67;
     return allProcedures.filter((p) => (p.category || '').toLowerCase() === catId).length;
@@ -83,6 +99,42 @@ export const ProceduresScreen: React.FC = () => {
   const handleProcedurePress = (procedure: Procedure) => {
     analytics.track('procedure_viewed', { slug: procedure.slug, name: procedure.name });
     navigation.navigate('ProcedureDetailModal', { procedureSlug: procedure.slug });
+  };
+
+  const renderFooter = () => {
+    if (filteredProcedures.length === 0) return null;
+
+    if (!hasMore) {
+      return (
+        <View style={styles.footerContainer}>
+          <Text style={styles.footerEndText}>
+            ✓ All {filteredProcedures.length} treatments loaded
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.footerContainer}>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={handleLoadMore}
+          style={styles.loadMoreBtn}
+        >
+          <Text style={styles.loadMoreText}>
+            Load More Treatments ({displayedProcedures.length} of {filteredProcedures.length})
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => setDisplayLimit(filteredProcedures.length)}
+          style={styles.showAllBtn}
+        >
+          <Text style={styles.showAllText}>Show All ({filteredProcedures.length})</Text>
+        </TouchableOpacity>
+      </View>
+    );
   };
 
   return (
@@ -128,8 +180,14 @@ export const ProceduresScreen: React.FC = () => {
 
       {/* Procedures List */}
       <FlatList
-        data={filteredProcedures}
+        data={displayedProcedures}
         keyExtractor={(item) => item.id}
+        initialNumToRender={20}
+        maxToRenderPerBatch={20}
+        windowSize={31}
+        removeClippedSubviews={Platform.OS !== 'web'}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
@@ -139,6 +197,7 @@ export const ProceduresScreen: React.FC = () => {
             onPress={() => handleProcedurePress(item)}
           />
         )}
+        ListFooterComponent={renderFooter}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
@@ -200,6 +259,37 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 18,
-    paddingBottom: 30,
+    paddingBottom: 40,
+  },
+  footerContainer: {
+    paddingVertical: 18,
+    alignItems: 'center',
+    gap: 8,
+  },
+  footerEndText: {
+    fontSize: typography.fontSizes.caption,
+    fontWeight: typography.fontWeights.medium,
+    color: colors.textSecondary,
+  },
+  loadMoreBtn: {
+    backgroundColor: colors.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 999,
+  },
+  loadMoreText: {
+    color: colors.textInverse,
+    fontSize: typography.fontSizes.caption,
+    fontWeight: typography.fontWeights.bold,
+  },
+  showAllBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+  },
+  showAllText: {
+    color: colors.primary,
+    fontSize: typography.fontSizes.caption,
+    fontWeight: typography.fontWeights.semibold,
   },
 });
+
