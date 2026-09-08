@@ -252,7 +252,54 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initializeAuth: async () => {
     try {
-      // 1. Check active Supabase session (e.g. from Google OAuth callback)
+      // 1. Helper function to process OAuth tokens or authorization code from deep links
+      const handleAuthDeepLink = async (url: string) => {
+        if (!url || !url.startsWith('skinapp://')) return;
+        try {
+          // Check for PKCE authorization code in query params: skinapp://auth/callback?code=xxx
+          if (url.includes('code=')) {
+            const parsedUrl = new URL(url);
+            const code = parsedUrl.searchParams.get('code');
+            if (code) {
+              const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+              if (error) console.warn('Error exchanging code for session:', error);
+              return;
+            }
+          }
+
+          // Check for implicit token hash in URL: skinapp://auth/callback#access_token=xxx&refresh_token=yyy
+          if (url.includes('#')) {
+            const hashIndex = url.indexOf('#');
+            const hash = url.substring(hashIndex + 1);
+            const params = new URLSearchParams(hash);
+            const accessToken = params.get('access_token');
+            const refreshToken = params.get('refresh_token');
+            if (accessToken && refreshToken) {
+              const { data, error } = await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken,
+              });
+              if (error) console.warn('Error setting session from URL hash:', error);
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn('Error handling OAuth callback deep link:', e);
+        }
+      };
+
+      // 2. Set up deep link listeners on mobile platforms
+      if (Platform.OS !== 'web') {
+        Linking.getInitialURL().then((url) => {
+          if (url) handleAuthDeepLink(url);
+        }).catch(console.warn);
+
+        Linking.addEventListener('url', ({ url }) => {
+          if (url) handleAuthDeepLink(url);
+        });
+      }
+
+      // 3. Check active Supabase session (e.g. from Google OAuth callback)
       const { data: sessionData } = await supabase.auth.getSession();
       if (sessionData?.session?.user) {
         const sbUser = sessionData.session.user;
@@ -270,7 +317,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ isAuthenticated: true, isGuest: false, hasCompletedAuth: true, user: profile });
         await AsyncStorage.setItem(STORAGE_KEY_USER, JSON.stringify(profile));
       } else {
-        // 2. Check local stored storage
+        // 4. Check local stored storage
         const storedUser = await AsyncStorage.getItem(STORAGE_KEY_USER);
         const isGuest = await AsyncStorage.getItem(STORAGE_KEY_GUEST);
 
@@ -281,7 +328,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
       }
 
-      // 3. Listen to auth state changes (e.g. Google OAuth redirect on web)
+      // 5. Listen to auth state changes (e.g. Google OAuth redirect on web / native)
       supabase.auth.onAuthStateChange(async (event, session) => {
         if (session?.user) {
           const sbUser = session.user;
