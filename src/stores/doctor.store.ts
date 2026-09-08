@@ -181,6 +181,19 @@ const persistClinicData = async (data: {
     }
 
     await Promise.all(promises);
+
+    // Sync to Supabase Cloud DB in background
+    const currentClinic = data.activeClinic;
+    if (currentClinic && (currentClinic.name || currentClinic.slug)) {
+      doctorService
+        .syncClinicToSupabase({
+          clinic: currentClinic,
+          doctors: data.clinicDoctors || [],
+          procedures: data.clinicProcedures || [],
+          isPublished: data.isClinicPublished !== undefined ? data.isClinicPublished : true,
+        })
+        .catch(console.warn);
+    }
   } catch (e) {
     console.warn('Failed to persist clinic data', e);
   }
@@ -219,7 +232,21 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
 
         const rawAccounts = await AsyncStorage.getItem(STORAGE_KEY_ACCOUNTS_MAP);
         const accounts = rawAccounts ? JSON.parse(rawAccounts) : {};
-        const savedAccount = normalizedEmail ? accounts[normalizedEmail] : null;
+        let savedAccount = normalizedEmail ? accounts[normalizedEmail] : null;
+
+        // If not in local accounts, try fetching from Supabase Cloud DB
+        if (!savedAccount && normalizedEmail) {
+          const cloudClinic = await doctorService.fetchClinicFromSupabase(normalizedEmail);
+          if (cloudClinic) {
+            savedAccount = {
+              doctorUser: user,
+              activeClinic: cloudClinic,
+              clinicDoctors: cloudClinic.doctors || [],
+              clinicProcedures: cloudClinic.procedures || [],
+              isClinicPublished: cloudClinic.isActive,
+            };
+          }
+        }
 
         if (savedAccount) {
           const clinic: Clinic = savedAccount.activeClinic || {

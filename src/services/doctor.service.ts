@@ -388,6 +388,166 @@ class DoctorService {
       totalPatientsCount: this.getPatientDirectory(appointments).length,
     };
   }
+
+  // 8. Full Cloud Sync to Supabase for Clinic, Doctors, and Publish State
+  async syncClinicToSupabase(payload: {
+    clinic: Clinic;
+    doctors: Doctor[];
+    procedures?: ClinicProcedure[];
+    isPublished: boolean;
+  }): Promise<boolean> {
+    try {
+      const { clinic, doctors, isPublished } = payload;
+      const slug =
+        clinic.slug ||
+        clinic.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') ||
+        'aura-clinic';
+
+      // 1. Upsert Clinic Record
+      const clinicRecord: any = {
+        name: clinic.name || 'Aura Skin Clinic',
+        slug: slug,
+        description: clinic.description || '',
+        logo_url: clinic.logoUrl || '',
+        cover_image_url: clinic.coverImageUrl || '',
+        phone: clinic.phone || '',
+        email: clinic.email || '',
+        address: clinic.address || '',
+        area: clinic.area || 'Chandigarh',
+        city: clinic.city || 'Chandigarh',
+        state: clinic.state || 'Chandigarh',
+        latitude: clinic.latitude || 30.7333,
+        longitude: clinic.longitude || 76.7794,
+        opening_hours: clinic.openingHours || {},
+        verification_status: clinic.verificationStatus || 'verified',
+        rating: clinic.rating || 5.0,
+        review_count: clinic.reviewCount || 0,
+        specialties: clinic.specialties || [],
+        gallery_images: clinic.galleryImages || [],
+        is_active: isPublished,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data: dbClinic, error: clinicError } = await supabase
+        .from('clinics')
+        .upsert(clinicRecord, { onConflict: 'slug' })
+        .select()
+        .single();
+
+      if (clinicError) {
+        console.warn('Supabase clinic sync notice:', clinicError.message);
+      }
+
+      // 2. Upsert Doctors
+      if (doctors && doctors.length > 0) {
+        for (const doc of doctors) {
+          const docSlug =
+            doc.slug ||
+            doc.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') ||
+            `doc-${Date.now()}`;
+
+          const docRecord: any = {
+            name: doc.name,
+            slug: docSlug,
+            photo_url: doc.photoUrl || '',
+            qualification: doc.qualification || '',
+            specialization: doc.specialization || 'Dermatologist',
+            experience_years: doc.experienceYears || 5,
+            bio: doc.bio || '',
+            rating: doc.rating || 5.0,
+            review_count: doc.reviewCount || 0,
+            is_active: doc.isActive !== false,
+            updated_at: new Date().toISOString(),
+          };
+
+          const { data: dbDoc } = await supabase
+            .from('doctors')
+            .upsert(docRecord, { onConflict: 'slug' })
+            .select()
+            .single();
+
+          if (dbClinic?.id && dbDoc?.id) {
+            await supabase
+              .from('clinic_doctors')
+              .upsert(
+                { clinic_id: dbClinic.id, doctor_id: dbDoc.id, is_primary: true },
+                { onConflict: 'clinic_id,doctor_id' }
+              );
+          }
+        }
+      }
+
+      return true;
+    } catch (e: any) {
+      console.warn('Cloud clinic sync error (saved locally):', e?.message || e);
+      return false;
+    }
+  }
+
+  // 9. Fetch Clinic from Supabase by Email or Slug
+  async fetchClinicFromSupabase(emailOrSlug: string): Promise<Clinic | null> {
+    try {
+      const normalized = emailOrSlug.toLowerCase().trim();
+      const { data, error } = await supabase
+        .from('clinics')
+        .select(`
+          *,
+          clinic_doctors (
+            doctors (*)
+          )
+        `)
+        .or(`email.ilike.%${normalized}%,slug.eq.${normalized}`)
+        .maybeSingle();
+
+      if (error || !data) return null;
+
+      const doctors: Doctor[] = (data.clinic_doctors || []).map((cd: any) => ({
+        id: cd.doctors?.id || `doc_${Date.now()}`,
+        name: cd.doctors?.name || 'Doctor',
+        slug: cd.doctors?.slug || 'doctor',
+        photoUrl: cd.doctors?.photo_url || '',
+        qualification: cd.doctors?.qualification || '',
+        specialization: cd.doctors?.specialization || 'Dermatology',
+        experienceYears: cd.doctors?.experience_years || 5,
+        bio: cd.doctors?.bio || '',
+        rating: cd.doctors?.rating || 5.0,
+        reviewCount: cd.doctors?.review_count || 0,
+        clinicId: data.id,
+        clinicName: data.name,
+        clinicAddress: data.address,
+        isActive: cd.doctors?.is_active !== false,
+      }));
+
+      const clinic: Clinic = {
+        id: data.id,
+        name: data.name,
+        slug: data.slug,
+        description: data.description || '',
+        logoUrl: data.logo_url || '',
+        coverImageUrl: data.cover_image_url || '',
+        phone: data.phone || '',
+        email: data.email || '',
+        address: data.address || '',
+        area: data.area || 'Chandigarh',
+        city: data.city || 'Chandigarh',
+        state: data.state || 'Chandigarh',
+        latitude: Number(data.latitude) || 30.7333,
+        longitude: Number(data.longitude) || 76.7794,
+        openingHours: data.opening_hours || {},
+        verificationStatus: data.verification_status || 'verified',
+        rating: Number(data.rating) || 5.0,
+        reviewCount: Number(data.review_count) || 0,
+        specialties: data.specialties || [],
+        galleryImages: data.gallery_images || [],
+        isActive: data.is_active !== false,
+        doctors: doctors,
+      };
+
+      return clinic;
+    } catch (e) {
+      return null;
+    }
+  }
 }
 
 export const doctorService = new DoctorService();
