@@ -8,6 +8,8 @@ import {
   ScrollView,
   StatusBar,
   RefreshControl,
+  TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { TopBar } from '../../components/ui/TopBar';
