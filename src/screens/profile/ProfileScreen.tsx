@@ -31,28 +31,26 @@ export const ProfileScreen: React.FC = () => {
 
   const upcomingCount = getUpcomingAppointments().length;
 
-  const handleLogout = () => {
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      if (window.confirm('Are you sure you want to sign out?')) {
-        logout();
+  const handleLogout = async () => {
+    try {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
       }
-      return;
+      await logout();
+    } catch (e) {
+      console.warn('Logout error:', e);
     }
-
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: () => {
-          logout();
-        },
-      },
-    ]);
   };
 
-  const handleLoginPress = () => {
-    navigation.navigate('AuthFlow');
+  const handleLoginPress = async () => {
+    try {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      }
+      await logout();
+    } catch (e) {
+      console.warn('Login navigation error:', e);
+    }
   };
 
   return (
@@ -172,10 +170,16 @@ export const ProfileScreen: React.FC = () => {
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={handleLogout}
-          style={[styles.logoutBtn, shadows.subtle]}
+          style={[
+            styles.logoutBtn,
+            shadows.subtle,
+            !isAuthenticated && { backgroundColor: '#F4EFE6', borderColor: '#E5DDCB' },
+          ]}
         >
-          <LogOut size={16} color="#DC3545" />
-          <Text style={styles.logoutText}>Sign Out</Text>
+          <LogOut size={16} color={isAuthenticated ? '#DC3545' : colors.primary} />
+          <Text style={[styles.logoutText, !isAuthenticated && { color: colors.primaryDark }]}>
+            {isAuthenticated ? 'Sign Out' : 'Sign In with Registered Account'}
+          </Text>
         </TouchableOpacity>
 
         {/* App Version */}
