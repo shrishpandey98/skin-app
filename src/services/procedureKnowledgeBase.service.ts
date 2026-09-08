@@ -283,7 +283,11 @@ class ProcedureKnowledgeBaseService {
     }
 
     if (forceRefresh) {
-      await this.fetchLiveSheet(forceRefresh);
+      try {
+        await this.fetchLiveSheet(forceRefresh);
+      } catch (e) {
+        console.warn('Live fetch error in getAllProcedures:', e);
+      }
     }
 
     let list = this.inMemoryProcedures;

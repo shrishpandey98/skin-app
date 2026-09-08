@@ -17,6 +17,7 @@ import { ProcedureCard } from '../../components/cards/ProcedureCard';
 import { EmptyState } from '../../components/states/EmptyState';
 import { PROCEDURE_CATEGORIES } from '../../constants/categories';
 import { proceduresService } from '../../services/procedures.service';
+import { PROCEDURES_KNOWLEDGE_BASE } from '../../data/procedures.data';
 import { Procedure } from '../../types/procedure.types';
 import { colors, typography } from '../../constants/theme';
 import { analytics } from '../../services/analytics.service';
@@ -26,16 +27,21 @@ export const ProceduresScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
 
-  const [selectedCategory, setSelectedCategory] = useState<string>(
-    route.params?.initialCategory || 'all'
-  );
+  const initialCat = route.params?.initialCategory || 'all';
+  const [selectedCategory, setSelectedCategory] = useState<string>(initialCat);
   const [searchQuery, setSearchQuery] = useState('');
-  const [procedures, setProcedures] = useState<Procedure[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  const getInitialList = (cat: string) => {
+    if (cat === 'all') return PROCEDURES_KNOWLEDGE_BASE;
+    return PROCEDURES_KNOWLEDGE_BASE.filter(
+      (p) => (p.category || '').toLowerCase() === cat.toLowerCase()
+    );
+  };
+
+  const [procedures, setProcedures] = useState<Procedure[]>(getInitialList(initialCat));
+  const [allProcedures, setAllProcedures] = useState<Procedure[]>(PROCEDURES_KNOWLEDGE_BASE);
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-
-  const [allProcedures, setAllProcedures] = useState<Procedure[]>([]);
-
   const [displayLimit, setDisplayLimit] = useState(20);
 
   useEffect(() => {
@@ -54,14 +60,18 @@ export const ProceduresScreen: React.FC = () => {
   }, [searchQuery]);
 
   const loadProcedures = async (force: boolean = false) => {
-    if (!force) setLoading(true);
-    const [data, all] = await Promise.all([
-      proceduresService.getAllProcedures(selectedCategory, force),
-      proceduresService.getAllProcedures('all', force),
-    ]);
-    setProcedures(data);
-    setAllProcedures(all);
-    setLoading(false);
+    try {
+      const [data, all] = await Promise.all([
+        proceduresService.getAllProcedures(selectedCategory, force),
+        proceduresService.getAllProcedures('all', force),
+      ]);
+      if (data && data.length > 0) setProcedures(data);
+      if (all && all.length > 0) setAllProcedures(all);
+    } catch (e) {
+      console.warn('Error fetching procedures:', e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleRefresh = async () => {
