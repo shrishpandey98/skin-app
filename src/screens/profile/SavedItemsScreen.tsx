@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,10 @@ import { ProcedureCard } from '../../components/cards/ProcedureCard';
 import { ClinicCard } from '../../components/cards/ClinicCard';
 import { EmptyState } from '../../components/states/EmptyState';
 import { useAuthStore } from '../../stores/auth.store';
-import { MOCK_CLINICS, MOCK_PROCEDURES } from '../../data/mockData';
+import { clinicsService } from '../../services/clinics.service';
+import { procedureKnowledgeBaseService } from '../../services/procedureKnowledgeBase.service';
+import { Clinic } from '../../types/clinic.types';
+import { Procedure } from '../../types/procedure.types';
 import { colors, typography } from '../../constants/theme';
 
 export const SavedItemsScreen: React.FC = () => {
@@ -26,9 +29,16 @@ export const SavedItemsScreen: React.FC = () => {
   );
 
   const { savedClinics, savedProcedures } = useAuthStore();
+  const [allClinics, setAllClinics] = useState<Clinic[]>([]);
+  const [allProcedures, setAllProcedures] = useState<Procedure[]>([]);
 
-  const bookmarkedClinics = MOCK_CLINICS.filter((c) => savedClinics.includes(c.slug));
-  const bookmarkedProcedures = MOCK_PROCEDURES.filter((p) => savedProcedures.includes(p.slug));
+  useEffect(() => {
+    clinicsService.getAllClinics().then((res) => setAllClinics(res));
+    procedureKnowledgeBaseService.getAllProcedures().then((res) => setAllProcedures(res));
+  }, []);
+
+  const bookmarkedClinics = allClinics.filter((c) => savedClinics.includes(c.slug) || savedClinics.includes(c.id));
+  const bookmarkedProcedures = allProcedures.filter((p) => savedProcedures.includes(p.slug) || savedProcedures.includes(p.id));
 
   const handleClinicPress = (slug: string) => {
     navigation.navigate('ClinicDetailModal', { clinicSlug: slug });

@@ -1,7 +1,7 @@
-import { MOCK_CLINICS } from '../data/mockData';
 import { Procedure } from '../types/procedure.types';
 import { ClinicOfferingProcedure } from '../types/clinic.types';
 import { procedureKnowledgeBaseService } from './procedureKnowledgeBase.service';
+import { clinicsService } from './clinics.service';
 
 export const proceduresService = {
   getAllProcedures: async (category?: string, forceRefresh: boolean = false): Promise<Procedure[]> => {
@@ -17,8 +17,9 @@ export const proceduresService = {
     if (!procedure) return [];
 
     const results: ClinicOfferingProcedure[] = [];
+    const clinics = await clinicsService.getAllClinics();
 
-    for (const clinic of MOCK_CLINICS) {
+    for (const clinic of clinics) {
       const matchPricing = clinic.procedures?.find(
         (cp) => cp.procedureId === procedure.id || cp.procedure?.slug === procedure.slug
       );

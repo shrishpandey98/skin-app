@@ -1,8 +1,9 @@
-import { MOCK_CLINICS, MOCK_DOCTORS, CONCERN_CATEGORIES } from '../data/mockData';
+import { CONCERN_CATEGORIES } from '../data/mockData';
 import { Procedure } from '../types/procedure.types';
 import { Clinic } from '../types/clinic.types';
 import { Doctor } from '../types/doctor.types';
 import { procedureKnowledgeBaseService } from './procedureKnowledgeBase.service';
+import { clinicsService } from './clinics.service';
 
 export interface SearchResultsData {
   procedures: Procedure[];
@@ -25,7 +26,10 @@ export const searchService = {
       };
     }
 
-    const allProcedures = await procedureKnowledgeBaseService.getAllProcedures();
+    const [allProcedures, allClinics] = await Promise.all([
+      procedureKnowledgeBaseService.getAllProcedures(),
+      clinicsService.getAllClinics(),
+    ]);
 
     // 1. Procedures match
     const procedures = allProcedures.filter(
@@ -39,20 +43,31 @@ export const searchService = {
     );
 
     // 2. Clinics match
-    const clinics = MOCK_CLINICS.filter(
+    const clinics = allClinics.filter(
       (c) =>
         c.name.toLowerCase().includes(q) ||
-        c.area.toLowerCase().includes(q) ||
-        c.address.toLowerCase().includes(q) ||
-        c.specialties.some((s) => s.toLowerCase().includes(q))
+        c.area?.toLowerCase().includes(q) ||
+        c.address?.toLowerCase().includes(q) ||
+        c.specialties?.some((s) => s.toLowerCase().includes(q))
     );
 
-    // 3. Doctors match
-    const doctors = MOCK_DOCTORS.filter(
+    // 3. Doctors match from live clinics
+    const allDoctors: Doctor[] = [];
+    const seenDoctorIds = new Set<string>();
+    allClinics.forEach((c) => {
+      (c.doctors || []).forEach((d) => {
+        if (!seenDoctorIds.has(d.id)) {
+          seenDoctorIds.add(d.id);
+          allDoctors.push(d);
+        }
+      });
+    });
+
+    const doctors = allDoctors.filter(
       (d) =>
-        d.name.toLowerCase().includes(q) ||
-        d.specialization.toLowerCase().includes(q) ||
-        d.qualification.toLowerCase().includes(q)
+        d.name?.toLowerCase().includes(q) ||
+        d.specialization?.toLowerCase().includes(q) ||
+        d.qualification?.toLowerCase().includes(q)
     );
 
     // 4. Concerns match

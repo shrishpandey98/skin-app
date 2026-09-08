@@ -32,7 +32,6 @@ import { TopBar } from '../../components/ui/TopBar';
 import { SearchBar } from '../../components/ui/SearchBar';
 import { ClinicCard } from '../../components/cards/ClinicCard';
 import { SectionHeader } from '../../components/ui/SectionHeader';
-import { MOCK_PROCEDURES, MOCK_CLINICS } from '../../data/mockData';
 import { colors, borderRadius, typography, shadows } from '../../constants/theme';
 import { analytics } from '../../services/analytics.service';
 import { proceduresService } from '../../services/procedures.service';

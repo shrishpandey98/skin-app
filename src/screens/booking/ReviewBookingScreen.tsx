@@ -253,8 +253,8 @@ export const ReviewBookingScreen: React.FC = () => {
             </View>
             <View style={styles.itemTextCol}>
               <Text style={styles.itemLabel}>Clinic & Location</Text>
-              <Text style={styles.itemValueBold}>{clinic?.name || 'Dr. Purva\'s Skin & Laser Clinic'}</Text>
-              <Text style={styles.itemSubValue}>{clinic?.address || 'Plot No. 1187, Sector 11, Panchkula'}</Text>
+              <Text style={styles.itemValueBold}>{clinic?.name || 'Selected Clinic'}</Text>
+              <Text style={styles.itemSubValue}>{clinic?.address || 'Consultation Location'}</Text>
             </View>
           </View>
 
@@ -268,7 +268,7 @@ export const ReviewBookingScreen: React.FC = () => {
             <View style={styles.itemTextCol}>
               <Text style={styles.itemLabel}>Practitioner</Text>
               <Text style={styles.itemValueBold}>
-                {doctor ? doctor.name : 'Dr. Purva Pande (Lead Dermatologist)'}
+                {doctor ? doctor.name : 'First Available Practitioner'}
               </Text>
               {doctor ? (
                 <Text style={styles.itemSubValue}>{doctor.specialization}</Text>

@@ -151,18 +151,9 @@ async function syncPublishedClinicsFromStorage(): Promise<Clinic[]> {
       publishedClinicsMap.delete(slug);
     });
 
-    // 4. If no published clinics exist anywhere, seed with active mock clinics
-    if (publishedClinicsMap.size === 0) {
-      for (const c of MOCK_CLINICS) {
-        if (c && c.isActive !== false && (c.name || c.slug)) {
-          publishedClinicsMap.set(c.slug, c);
-        }
-      }
-    }
-
     const allPublished = Array.from(publishedClinicsMap.values());
 
-    // 5. Sync memory arrays so other parts of the app find doctors & clinics
+    // Sync memory arrays so other parts of the app find doctors & clinics
     allPublished.forEach((clinic) => {
       const idx = MOCK_CLINICS.findIndex((c) => c.slug === clinic.slug || c.id === clinic.id);
       if (idx >= 0) {
@@ -186,7 +177,7 @@ async function syncPublishedClinicsFromStorage(): Promise<Clinic[]> {
     return allPublished;
   } catch (e) {
     console.warn('Error loading published clinics:', e);
-    return MOCK_CLINICS.filter((c) => c.isActive !== false);
+    return [];
   }
 }
 
@@ -240,22 +231,13 @@ export const clinicsService = {
     const clinic = clinics.find((c) => c.slug === slug || c.id === slug);
     if (!clinic) return null;
 
-    // Attach clinic doctors
-    const doctors = clinic.doctors && clinic.doctors.length > 0
-      ? clinic.doctors
-      : MOCK_DOCTORS.filter((d) => d.clinicId === clinic.id);
-
-    return {
-      ...clinic,
-      doctors,
-    };
+    return clinic;
   },
 
   getDoctorsForClinic: async (clinicSlug: string): Promise<Doctor[]> => {
     const clinic = await clinicsService.getClinicBySlug(clinicSlug);
     if (!clinic) return [];
-    if (clinic.doctors && clinic.doctors.length > 0) return clinic.doctors;
-    return MOCK_DOCTORS.filter((d) => d.clinicId === clinic.id);
+    return clinic.doctors || [];
   },
 
   getReviewsForClinic: async (clinicId: string): Promise<Review[]> => {

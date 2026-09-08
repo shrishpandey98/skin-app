@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Appointment, BookingPayload } from '../types/appointment.types';
-import { MOCK_CLINICS, MOCK_DOCTORS, MOCK_PROCEDURES } from '../data/mockData';
+import { clinicsService } from '../services/clinics.service';
+import { procedureKnowledgeBaseService } from '../services/procedureKnowledgeBase.service';
 
 interface AppointmentsState {
   appointments: Appointment[];
@@ -20,22 +21,23 @@ export const useAppointmentsStore = create<AppointmentsState>((set, get) => ({
   appointments: [],
 
   createAppointment: async (payload: BookingPayload) => {
-    const clinic =
-      MOCK_CLINICS.find((c) => c.id === payload.clinicId || c.slug === payload.clinicId) ||
-      ({
+    let clinic = await clinicsService.getClinicBySlug(payload.clinicId);
+    if (!clinic) {
+      clinic = {
         id: payload.clinicId || 'clinic_default',
         name: 'Aesthetic Clinic',
         slug: payload.clinicId || 'clinic-default',
         address: 'Chandigarh',
         phone: '+91 98765 43210',
-      } as any);
+      } as any;
+    }
 
-    const doctor = payload.doctorId
-      ? MOCK_DOCTORS.find((d) => d.id === payload.doctorId || d.slug === payload.doctorId)
+    const doctor = payload.doctorId && clinic?.doctors
+      ? clinic.doctors.find((d) => d.id === payload.doctorId || d.slug === payload.doctorId)
       : undefined;
 
     const procedure = payload.procedureId
-      ? MOCK_PROCEDURES.find((p) => p.id === payload.procedureId || p.slug === payload.procedureId)
+      ? await procedureKnowledgeBaseService.getProcedureBySlug(payload.procedureId)
       : undefined;
 
     const newAppointment: Appointment = {

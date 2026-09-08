@@ -217,7 +217,7 @@ class DoctorService {
       sortOrder: 1,
       isActive: true,
       relatedProcedureSlugs: [],
-      addedByName: MOCK_CLINICS.find((c) => c.id === clinicId)?.name || "Dr. Purva's Skin & Laser Clinic",
+      addedByName: MOCK_CLINICS.find((c) => c.id === clinicId)?.name || "Aesthetic Clinic",
       addedByClinicId: clinicId,
       isGloballyEnabled: false, // Only visible in this clinic until backend mapping/enabling
     };
