@@ -1,6 +1,6 @@
 // AUTO-GENERATED FROM LIVE GOOGLE SHEET KNOWLEDGE BASE
 // Source: https://docs.google.com/spreadsheets/d/1W26C7Znao0cKC-smQmmP37D4tNxnhfH-/export?format=csv
-// Generated at: 2026-09-05T05:17:09.917Z
+// Generated at: 2026-09-08T11:13:36.195Z
 
 import { Procedure } from '../types/procedure.types';
 
@@ -758,9 +758,9 @@ export const PROCEDURES_KNOWLEDGE_BASE: Procedure[] = [
     "addedByName": "System"
   },
   {
-    "id": "proc_laser_toning_facial",
-    "name": "Laser Toning (Facial Rejuvenation)",
-    "slug": "laser-toning-facial",
+    "id": "proc_laser_toning",
+    "name": "Laser Toning",
+    "slug": "laser-toning",
     "category": "skin",
     "categoryLabel": "Facial & Skin Rejuvenation",
     "shortDescription": "Low-fluence laser treatment used to target unwanted pigmentation and improve overall skin tone.",
@@ -1477,9 +1477,9 @@ export const PROCEDURES_KNOWLEDGE_BASE: Procedure[] = [
     "addedByName": "System"
   },
   {
-    "id": "proc_acne_scar_comprehensive",
-    "name": "Acne Scar Treatment (Comprehensive)",
-    "slug": "acne-scar-comprehensive",
+    "id": "proc_acne-scar-treatment",
+    "name": "Acne Scar Treatment",
+    "slug": "acne-scar-treatment",
     "category": "skin",
     "categoryLabel": "Acne & Acne Scar Procedures",
     "shortDescription": "Personalized treatment plan combining procedures according to acne-scar type and severity.",
@@ -1521,9 +1521,9 @@ export const PROCEDURES_KNOWLEDGE_BASE: Procedure[] = [
     "addedByName": "System"
   },
   {
-    "id": "proc_microneedling_collagen",
-    "name": "Microneedling (Collagen Induction)",
-    "slug": "microneedling-collagen",
+    "id": "proc_microneedling",
+    "name": "Microneedling",
+    "slug": "microneedling",
     "category": "skin",
     "categoryLabel": "Acne & Acne Scar Procedures",
     "shortDescription": "Collagen-induction procedure using fine needles to create controlled micro-injuries in the skin.",
@@ -1816,9 +1816,9 @@ export const PROCEDURES_KNOWLEDGE_BASE: Procedure[] = [
     "addedByName": "System"
   },
   {
-    "id": "proc_dermal_fillers_contouring",
-    "name": "Dermal Fillers (Facial Contouring)",
-    "slug": "dermal-fillers-contouring",
+    "id": "proc_dermal-fillers",
+    "name": "Dermal Fillers",
+    "slug": "dermal-fillers",
     "category": "aesthetics",
     "categoryLabel": "Anti-Aging & Facial Aesthetics",
     "shortDescription": "Injectable materials used to restore volume, soften selected lines and enhance facial contours.",
@@ -2866,5 +2866,3 @@ export const PROCEDURES_KNOWLEDGE_BASE: Procedure[] = [
     "addedByName": "System"
   }
 ];
-
-export const MOCK_PROCEDURES: Procedure[] = PROCEDURES_KNOWLEDGE_BASE;

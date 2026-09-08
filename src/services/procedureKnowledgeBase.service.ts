@@ -5,7 +5,7 @@ import { PROCEDURES_KNOWLEDGE_BASE } from '../data/procedures.data';
 const SHEET_CSV_URL =
   'https://docs.google.com/spreadsheets/d/1W26C7Znao0cKC-smQmmP37D4tNxnhfH-/export?format=csv';
 
-const STORAGE_KEY = '@aura_live_procedures_knowledge_base_v4';
+const STORAGE_KEY = '@aura_live_procedures_knowledge_base_v7';
 const LAST_FETCHED_KEY = '@aura_live_procedures_last_fetched';
 const CACHE_TTL_MS = 1000 * 60 * 15; // 15 minutes fresh cache
 
