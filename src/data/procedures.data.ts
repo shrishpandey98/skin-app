@@ -2866,3 +2866,6 @@ export const PROCEDURES_KNOWLEDGE_BASE: Procedure[] = [
     "addedByName": "System"
   }
 ];
+
+export const MOCK_PROCEDURES: Procedure[] = PROCEDURES_KNOWLEDGE_BASE;
+

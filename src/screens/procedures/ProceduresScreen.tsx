@@ -34,6 +34,8 @@ export const ProceduresScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  const [allProcedures, setAllProcedures] = useState<Procedure[]>([]);
+
   useEffect(() => {
     if (route.params?.initialCategory) {
       setSelectedCategory(route.params.initialCategory);
@@ -46,8 +48,12 @@ export const ProceduresScreen: React.FC = () => {
 
   const loadProcedures = async (force: boolean = false) => {
     if (!force) setLoading(true);
-    const data = await proceduresService.getAllProcedures(selectedCategory, force);
+    const [data, all] = await Promise.all([
+      proceduresService.getAllProcedures(selectedCategory, force),
+      proceduresService.getAllProcedures('all', force),
+    ]);
     setProcedures(data);
+    setAllProcedures(all);
     setLoading(false);
   };
 
@@ -69,6 +75,11 @@ export const ProceduresScreen: React.FC = () => {
     );
   });
 
+  const getCategoryCount = (catId: string) => {
+    if (catId === 'all') return allProcedures.length || 67;
+    return allProcedures.filter((p) => (p.category || '').toLowerCase() === catId).length;
+  };
+
   const handleProcedurePress = (procedure: Procedure) => {
     analytics.track('procedure_viewed', { slug: procedure.slug, name: procedure.name });
     navigation.navigate('ProcedureDetailModal', { procedureSlug: procedure.slug });
@@ -82,7 +93,7 @@ export const ProceduresScreen: React.FC = () => {
       <View style={styles.header}>
         <Text style={styles.title}>Explore Treatments</Text>
         <Text style={styles.subtitle}>
-          Learn about medical aesthetic treatments & find verified clinics offering them.
+          {allProcedures.length || 67} verified clinical procedures from our Knowledge Base.
         </Text>
 
         <SearchBar
@@ -101,14 +112,17 @@ export const ProceduresScreen: React.FC = () => {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoryScroll}
         >
-          {PROCEDURE_CATEGORIES.map((cat) => (
-            <FilterChip
-              key={cat.id}
-              label={cat.name}
-              isSelected={selectedCategory === cat.id}
-              onPress={() => setSelectedCategory(cat.id)}
-            />
-          ))}
+          {PROCEDURE_CATEGORIES.map((cat) => {
+            const count = getCategoryCount(cat.id);
+            return (
+              <FilterChip
+                key={cat.id}
+                label={`${cat.name} (${count})`}
+                isSelected={selectedCategory === cat.id}
+                onPress={() => setSelectedCategory(cat.id)}
+              />
+            );
+          })}
         </ScrollView>
       </View>
 
