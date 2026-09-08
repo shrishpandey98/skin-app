@@ -20,6 +20,22 @@ const STORAGE_KEY_CLINIC_PROCEDURES = '@aura_clinic_procedures_list';
 
 import { supabase } from './supabase';
 
+const DUMMY_CLINIC_IDS = new Set([
+  '22222222-2222-2222-2222-222222222201',
+  '22222222-2222-2222-2222-222222222202',
+]);
+const DUMMY_CLINIC_SLUGS = new Set([
+  'dr-purvas-skin-and-laser-clinic',
+  'aesthetica-skin-and-laser-clinic',
+]);
+
+const ALL_ACCOUNT_KEYS = [
+  '@aura_clinic_registered_accounts_v3',
+  '@aura_clinic_registered_accounts_v2',
+  '@aura_clinic_registered_accounts_v1',
+  '@aura_clinic_registered_accounts',
+];
+
 async function syncPublishedClinicsFromStorage(): Promise<Clinic[]> {
   try {
     const publishedClinicsMap = new Map<string, Clinic>();
@@ -39,6 +55,11 @@ async function syncPublishedClinicsFromStorage(): Promise<Clinic[]> {
 
       if (!error && dbClinics && dbClinics.length > 0) {
         for (const data of dbClinics) {
+          // Ignore legacy template dummy clinics in DB
+          if (DUMMY_CLINIC_IDS.has(data.id) || DUMMY_CLINIC_SLUGS.has(data.slug)) {
+            continue;
+          }
+
           const doctors: Doctor[] = (data.clinic_doctors || []).map((cd: any) => ({
             id: cd.doctors?.id || `doc_${Date.now()}`,
             name: cd.doctors?.name || 'Doctor',
@@ -87,31 +108,35 @@ async function syncPublishedClinicsFromStorage(): Promise<Clinic[]> {
       // Offline / Supabase connection notice
     }
 
-    // 2. Check Accounts Map (All registered clinic accounts on this device)
-    const rawAccounts = await AsyncStorage.getItem(STORAGE_KEY_ACCOUNTS_MAP);
-    if (rawAccounts) {
-      try {
-        const accounts: Record<string, any> = JSON.parse(rawAccounts);
-        for (const email of Object.keys(accounts)) {
-          const acc = accounts[email];
-          const clinic = acc?.activeClinic;
-          const slug = clinic?.slug || clinic?.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-          if (acc && (acc.isClinicPublished === true || acc.activeClinic?.isActive === true)) {
-            if (clinic && (clinic.name || clinic.slug)) {
-              const fullClinic: Clinic = {
-                ...clinic,
-                isActive: true,
-                doctors: acc.clinicDoctors || clinic.doctors || [],
-                procedures: acc.clinicProcedures || clinic.procedures || [],
-                slug: slug || 'aura-clinic',
-              };
-              publishedClinicsMap.set(fullClinic.slug, fullClinic);
+    // 2. Check Accounts Map (All registered clinic accounts across all storage versions)
+    for (const key of ALL_ACCOUNT_KEYS) {
+      const rawAccounts = await AsyncStorage.getItem(key);
+      if (rawAccounts) {
+        try {
+          const accounts: Record<string, any> = JSON.parse(rawAccounts);
+          for (const email of Object.keys(accounts)) {
+            const acc = accounts[email];
+            const clinic = acc?.activeClinic;
+            const slug = clinic?.slug || clinic?.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            if (acc && (acc.isClinicPublished === true || acc.activeClinic?.isActive === true)) {
+              if (clinic && (clinic.name || clinic.slug)) {
+                const fullClinic: Clinic = {
+                  ...clinic,
+                  id: clinic.id || `clinic_${Date.now()}`,
+                  name: clinic.name || 'Aesthetic Clinic',
+                  slug: slug || `clinic-${Date.now()}`,
+                  isActive: true,
+                  doctors: acc.clinicDoctors || clinic.doctors || [],
+                  procedures: acc.clinicProcedures || clinic.procedures || [],
+                };
+                publishedClinicsMap.set(fullClinic.slug, fullClinic);
+              }
+            } else if (acc && acc.isClinicPublished === false && slug) {
+              unpublishedSlugs.add(slug);
             }
-          } else if (slug && acc?.isClinicPublished === false) {
-            unpublishedSlugs.add(slug);
           }
-        }
-      } catch (e) {}
+        } catch (e) {}
+      }
     }
 
     // 3. Check Single Custom Profile & Published State

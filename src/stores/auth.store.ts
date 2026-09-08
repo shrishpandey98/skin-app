@@ -103,11 +103,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const isEmail = usernameOrEmail.includes('@');
     const normalizedKey = usernameOrEmail.toLowerCase().trim();
 
-    // 1. Read registered customers DB
-    const rawMap = await AsyncStorage.getItem(STORAGE_KEY_CUSTOMERS_MAP);
-    const customersMap: Record<string, { password: string; user: UserProfile }> = rawMap
-      ? JSON.parse(rawMap)
-      : {};
+    // 1. Read registered customers DB across all storage keys
+    const ALL_CUSTOMER_KEYS = [
+      '@aura_customer_registered_accounts_v1',
+      '@aura_customer_registered_accounts',
+    ];
+    const customersMap: Record<string, { password: string; user: UserProfile }> = {};
+    for (const key of ALL_CUSTOMER_KEYS) {
+      try {
+        const raw = await AsyncStorage.getItem(key);
+        if (raw) {
+          Object.assign(customersMap, JSON.parse(raw));
+        }
+      } catch (e) {}
+    }
 
     // 2. Pre-seed default demo users if not present
     const demoUsers: Record<string, { password: string; user: UserProfile }> = {

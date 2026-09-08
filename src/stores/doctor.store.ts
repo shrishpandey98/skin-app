@@ -81,6 +81,28 @@ const STORAGE_KEY_DOCTORS_LIST = '@aura_clinic_doctors_list';
 const STORAGE_KEY_CLINIC_PROCEDURES = '@aura_clinic_procedures_list';
 const STORAGE_KEY_ACCOUNTS_MAP = '@aura_clinic_registered_accounts_v3';
 
+const ALL_ACCOUNT_STORAGE_KEYS = [
+  '@aura_clinic_registered_accounts_v3',
+  '@aura_clinic_registered_accounts_v2',
+  '@aura_clinic_registered_accounts_v1',
+  '@aura_clinic_registered_accounts',
+];
+
+async function loadAllStoredDoctorAccounts(): Promise<Record<string, any>> {
+  const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+  const merged: Record<string, any> = {};
+  for (const key of ALL_ACCOUNT_STORAGE_KEYS) {
+    try {
+      const raw = await AsyncStorage.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        Object.assign(merged, parsed);
+      }
+    } catch (e) {}
+  }
+  return merged;
+}
+
 const DEFAULT_CLINIC: Clinic = {
   id: 'clinic_default_aura',
   name: '',
@@ -157,8 +179,7 @@ const persistClinicData = async (data: {
     ).toLowerCase().trim();
 
     if (emailKey) {
-      const rawAccounts = await AsyncStorage.getItem(STORAGE_KEY_ACCOUNTS_MAP);
-      const accounts = rawAccounts ? JSON.parse(rawAccounts) : {};
+      const accounts = await loadAllStoredDoctorAccounts();
       const prevAccount = accounts[emailKey] || {};
 
       // Keep doctorUser profile object in accounts map even if logging out
@@ -230,8 +251,7 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
         const user: ClinicUserProfile = JSON.parse(storedDoctor);
         const normalizedEmail = (user.email || '').toLowerCase().trim();
 
-        const rawAccounts = await AsyncStorage.getItem(STORAGE_KEY_ACCOUNTS_MAP);
-        const accounts = rawAccounts ? JSON.parse(rawAccounts) : {};
+        const accounts = await loadAllStoredDoctorAccounts();
         let savedAccount = normalizedEmail ? accounts[normalizedEmail] : null;
 
         // If not in local accounts, try fetching from Supabase Cloud DB
@@ -356,11 +376,28 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
     const normalizedEmail = email.toLowerCase().trim();
     const AsyncStorage = require('@react-native-async-storage/async-storage').default;
 
-    // Look up saved account for this email
-    const rawAccounts = await AsyncStorage.getItem(STORAGE_KEY_ACCOUNTS_MAP);
-    const accounts: Record<string, any> = rawAccounts ? JSON.parse(rawAccounts) : {};
+    // Look up saved account across all versions
+    const accounts = await loadAllStoredDoctorAccounts();
+    let existingAccount = accounts[normalizedEmail];
 
-    const existingAccount = accounts[normalizedEmail];
+    // If not found in local accounts map, check Supabase Cloud DB
+    if (!existingAccount && authMode === 'signin') {
+      const cloudClinic = await doctorService.fetchClinicFromSupabase(normalizedEmail);
+      if (cloudClinic) {
+        existingAccount = {
+          doctorUser: {
+            id: 'doc_' + Date.now(),
+            name: doctorName || cloudClinic.name || email.split('@')[0],
+            email: normalizedEmail,
+            clinicName: cloudClinic.name,
+          },
+          activeClinic: cloudClinic,
+          clinicDoctors: cloudClinic.doctors || [],
+          clinicProcedures: cloudClinic.procedures || [],
+          isClinicPublished: cloudClinic.isActive,
+        };
+      }
+    }
 
     if (authMode === 'signin') {
       if (!existingAccount) {
