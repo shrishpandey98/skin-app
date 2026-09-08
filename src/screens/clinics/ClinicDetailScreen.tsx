@@ -231,39 +231,93 @@ export const ClinicDetailScreen: React.FC = () => {
             </View>
 
             <View style={styles.proceduresList}>
-              {clinic.procedures?.map((proc) => {
-                const procTitle = proc.id
-                  .replace(/^cp_[a-z]+_/, '')
-                  .replace(/_/g, ' ')
-                  .replace(/\b\w/g, (l) => l.toUpperCase());
+              {(() => {
+                const uniqueProcs: ClinicProcedure[] = [];
+                const seenKeys = new Set<string>();
 
-                return (
-                  <View key={proc.id} style={[styles.procedureItem, shadows.subtle]}>
-                    <View style={styles.procInfoCol}>
-                      <Text style={styles.procTitle}>{procTitle}</Text>
-                      {proc.description ? (
-                        <Text style={styles.procDesc}>{proc.description}</Text>
-                      ) : null}
-                      <PriceTag
-                        priceFrom={proc.priceFrom}
-                        priceTo={proc.priceTo}
-                        unit={proc.priceUnit}
-                        prefix="From"
-                        size="md"
-                        style={styles.procPriceTag}
-                      />
+                (clinic.procedures || []).forEach((proc) => {
+                  const key = (
+                    proc.procedures?.slug ||
+                    proc.procedureId ||
+                    proc.id ||
+                    ''
+                  )
+                    .toLowerCase()
+                    .replace(/^cp_/, '')
+                    .replace(/^proc_/, '')
+                    .trim();
+
+                  if (!key || seenKeys.has(key)) return;
+                  seenKeys.add(key);
+                  uniqueProcs.push(proc);
+                });
+
+                if (uniqueProcs.length === 0) {
+                  return (
+                    <Text style={styles.noReviewsText}>
+                      No treatments currently listed by this clinic.
+                    </Text>
+                  );
+                }
+
+                return uniqueProcs.map((proc) => {
+                  const procTitle =
+                    proc.procedures?.name ||
+                    proc.procedure?.name ||
+                    proc.name ||
+                    proc.id
+                      .replace(/^cp_[a-z0-9]+_/, '')
+                      .replace(/^cp_/, '')
+                      .replace(/^proc_/, '')
+                      .replace(/_/g, ' ')
+                      .replace(/-/g, ' ')
+                      .replace(/\b\w/g, (l) => l.toUpperCase());
+
+                  const procDesc =
+                    proc.description ||
+                    proc.procedures?.shortDescription ||
+                    proc.procedure?.shortDescription ||
+                    '';
+
+                  const targetSlug =
+                    proc.procedures?.slug ||
+                    proc.procedure?.slug ||
+                    proc.procedureId?.replace(/^proc_/, '').replace(/_/g, '-') ||
+                    proc.id?.replace(/^cp_/, '').replace(/_/g, '-');
+
+                  return (
+                    <View key={proc.id} style={[styles.procedureItem, shadows.subtle]}>
+                      <View style={styles.procInfoCol}>
+                        <TouchableOpacity
+                          activeOpacity={0.75}
+                          onPress={() => handleProcedurePress(targetSlug)}
+                        >
+                          <Text style={styles.procTitle}>{procTitle}</Text>
+                        </TouchableOpacity>
+                        {procDesc ? (
+                          <Text style={styles.procDesc}>{procDesc}</Text>
+                        ) : null}
+                        <PriceTag
+                          priceFrom={proc.priceFrom}
+                          priceTo={proc.priceTo}
+                          unit={proc.priceUnit}
+                          prefix="From"
+                          size="md"
+                          style={styles.procPriceTag}
+                        />
+                      </View>
+
+                      <TouchableOpacity
+                        activeOpacity={0.82}
+                        onPress={() => handleBookAppointment(targetSlug)}
+                        style={styles.procBookBtn}
+                      >
+                        <Text style={styles.procBookBtnText}>Book</Text>
+                      </TouchableOpacity>
                     </View>
-
-                    <TouchableOpacity
-                      activeOpacity={0.82}
-                      onPress={() => handleBookAppointment(proc.procedureId)}
-                      style={styles.procBookBtn}
-                    >
-                      <Text style={styles.procBookBtnText}>Book</Text>
-                    </TouchableOpacity>
-                  </View>
-                );
-              })}
+                  );
+                });
+              })()}
             </View>
           </View>
 

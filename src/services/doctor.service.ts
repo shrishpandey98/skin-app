@@ -314,29 +314,38 @@ class DoctorService {
     procedure: Procedure,
     isOffered: boolean
   ): Promise<void> {
+    const matchFn = (cp: ClinicProcedure) => {
+      const pId = (cp.procedureId || cp.id || '').toLowerCase().replace(/^cp_/, '');
+      const targetId = (procedure.id || '').toLowerCase().replace(/^cp_/, '');
+      const targetSlug = (procedure.slug || '').toLowerCase();
+      return (
+        pId === targetId ||
+        pId === targetSlug ||
+        cp.procedureId === procedure.id ||
+        cp.procedureId === procedure.slug ||
+        cp.id === `cp_${procedure.id}` ||
+        cp.procedures?.slug === procedure.slug ||
+        cp.procedures?.id === procedure.id
+      );
+    };
+
     if (isOffered) {
-      const exists = this.clinicProcedures.find((cp) => cp.procedureId === procedure.id);
+      const exists = this.clinicProcedures.find(matchFn);
       if (!exists) {
         const newCP: ClinicProcedure = {
           id: 'cp_' + procedure.id,
           clinicId: clinicId,
           procedureId: procedure.id,
           priceFrom: 2500,
-          priceUnit: 'per session',
+          priceUnit: procedure.category === 'aesthetics' ? 'per session / unit' : 'per session',
           description: procedure.shortDescription,
           isAvailable: true,
           procedures: procedure,
         };
         this.clinicProcedures.push(newCP);
-        if (MOCK_CLINICS[0]?.procedures) MOCK_CLINICS[0].procedures.push(newCP);
       }
     } else {
-      this.clinicProcedures = this.clinicProcedures.filter((cp) => cp.procedureId !== procedure.id);
-      if (MOCK_CLINICS[0]?.procedures) {
-        MOCK_CLINICS[0].procedures = MOCK_CLINICS[0].procedures.filter(
-          (cp) => cp.procedureId !== procedure.id
-        );
-      }
+      this.clinicProcedures = this.clinicProcedures.filter((cp) => !matchFn(cp));
     }
   }
 

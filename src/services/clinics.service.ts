@@ -36,6 +36,22 @@ const ALL_ACCOUNT_KEYS = [
   '@aura_clinic_registered_accounts',
 ];
 
+function deduplicateClinicProcedures(procs: any[]): any[] {
+  const seen = new Set<string>();
+  const unique: any[] = [];
+  for (const p of procs || []) {
+    const key = (p.procedures?.slug || p.procedureId || p.id || '')
+      .toLowerCase()
+      .replace(/^cp_/, '')
+      .replace(/^proc_/, '')
+      .trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    unique.push(p);
+  }
+  return unique;
+}
+
 async function syncPublishedClinicsFromStorage(): Promise<Clinic[]> {
   try {
     const publishedClinicsMap = new Map<string, Clinic>();
@@ -127,7 +143,7 @@ async function syncPublishedClinicsFromStorage(): Promise<Clinic[]> {
                   slug: slug || `clinic-${Date.now()}`,
                   isActive: true,
                   doctors: acc.clinicDoctors || clinic.doctors || [],
-                  procedures: acc.clinicProcedures || clinic.procedures || [],
+                  procedures: deduplicateClinicProcedures(acc.clinicProcedures || clinic.procedures || []),
                 };
                 publishedClinicsMap.set(fullClinic.slug, fullClinic);
               }
@@ -160,7 +176,7 @@ async function syncPublishedClinicsFromStorage(): Promise<Clinic[]> {
               ...clinic,
               isActive: true,
               doctors: doctors.length > 0 ? doctors : clinic.doctors || [],
-              procedures: procedures.length > 0 ? procedures : clinic.procedures || [],
+              procedures: deduplicateClinicProcedures(procedures.length > 0 ? procedures : clinic.procedures || []),
               slug: slug || 'aura-clinic',
             };
             publishedClinicsMap.set(fullClinic.slug, fullClinic);

@@ -72,6 +72,26 @@ function parseBullets(text?: string): string[] {
   return cleaned;
 }
 
+function normalizeCategory(cat: string): ProcedureCategory {
+  const c = (cat || '').toLowerCase().trim();
+  if (c === 'skin' || c === 'hair' || c === 'laser' || c === 'aesthetics') return c as ProcedureCategory;
+  if (c.includes('hair') || c.includes('scalp')) return 'hair';
+  if (c.includes('laser') || c.includes('toning') || c.includes('ipl')) return 'laser';
+  if (
+    c.includes('anti-aging') ||
+    c.includes('injectable') ||
+    c.includes('aesthetic') ||
+    c.includes('botox') ||
+    c.includes('filler') ||
+    c.includes('hifu') ||
+    c.includes('thread') ||
+    c.includes('contour')
+  ) {
+    return 'aesthetics';
+  }
+  return 'skin';
+}
+
 function parseFAQs(text?: string): { question: string; answer: string }[] {
   if (!text) return [];
   const faqs: { question: string; answer: string }[] = [];
@@ -184,8 +204,9 @@ class ProcedureKnowledgeBaseService {
           id = `${rawId}_${counter++}`;
         }
 
-        const category = (r['Category'] || 'skin').trim().toLowerCase() as ProcedureCategory;
-        const categoryLabel = (r['Category Label'] || category.toUpperCase()).trim();
+        const rawCat = (r['Category'] || 'skin').trim();
+        const category = normalizeCategory(rawCat);
+        const categoryLabel = (r['Category Label'] || rawCat.toUpperCase()).trim();
         const shortDescription = (r['Short Description'] || '').trim();
         const description = (r['Full Description'] || shortDescription).trim();
         const machineOrTechnology = (r['Machine/Technology'] || '').trim();
@@ -281,7 +302,7 @@ class ProcedureKnowledgeBaseService {
     const catKey = category.toLowerCase().trim();
 
     return list.filter((p) => {
-      const pCat = (p.category || '').toLowerCase().trim();
+      const pCat = normalizeCategory(p.category || '');
       return pCat === catKey;
     });
   }
