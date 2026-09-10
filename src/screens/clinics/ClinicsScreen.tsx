@@ -83,7 +83,7 @@ export const ClinicsScreen: React.FC = () => {
   const handleBookPress = (clinic: Clinic) => {
     analytics.track('booking_started', { clinicSlug: clinic.slug });
     navigation.navigate('BookingFlow', {
-      screen: 'SelectDoctor',
+      screen: 'SelectProcedure',
       params: {
         clinicSlug: clinic.slug,
       },

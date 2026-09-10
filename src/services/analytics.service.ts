@@ -12,7 +12,11 @@ export type AnalyticsEvent =
   | 'concern_selected'
   | 'concern_options_viewed'
   | 'clinic_saved'
-  | 'procedure_saved';
+  | 'procedure_saved'
+  | 'ira_chat_query'
+  | 'ira_procedure_card_clicked'
+  | 'ira_opened_from_home'
+  | 'browse_all_procedures_pressed';
 
 export const analytics = {
   track: (event: AnalyticsEvent, properties?: Record<string, any>) => {

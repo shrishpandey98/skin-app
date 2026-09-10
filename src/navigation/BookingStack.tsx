@@ -12,12 +12,15 @@ const Stack = createNativeStackNavigator<BookingStackParamList>();
 
 export const BookingStack: React.FC = () => {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
-      <Stack.Screen name="SelectDoctor" component={SelectDoctorScreen} />
+    <Stack.Navigator
+      initialRouteName="SelectProcedure"
+      screenOptions={{ headerShown: false, animation: 'slide_from_right' }}
+    >
       <Stack.Screen name="SelectProcedure" component={SelectProcedureScreen} />
       <Stack.Screen name="SelectDateTime" component={SelectDateTimeScreen} />
       <Stack.Screen name="ConfirmDetails" component={ConfirmDetailsScreen} />
       <Stack.Screen name="ReviewBooking" component={ReviewBookingScreen} />
+      <Stack.Screen name="SelectDoctor" component={SelectProcedureScreen} />
       <Stack.Screen
         name="BookingSuccess"
         component={BookingSuccessScreen}

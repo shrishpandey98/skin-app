@@ -14,6 +14,7 @@ import { ProcedureCard } from '../../components/cards/ProcedureCard';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { FloatingBackButton } from '../../components/ui/FloatingBackButton';
 import { recommendationService } from '../../services/recommendation.service';
+import { proceduresService } from '../../services/procedures.service';
 import { Procedure } from '../../types/procedure.types';
 import { colors, borderRadius, typography, shadows } from '../../constants/theme';
 import { analytics } from '../../services/analytics.service';

@@ -30,6 +30,7 @@ export const DoctorScheduleScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const {
     activeClinic,
+    activeDoctor,
     clinicDoctors,
     doctorUser,
     selectedDoctorFilter,
@@ -49,18 +50,26 @@ export const DoctorScheduleScreen: React.FC = () => {
 
   const todayStr = new Date().toISOString().split('T')[0];
 
+  const getTodayScheduleSummary = () => {
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const todayDayKey = days[new Date().getDay()];
+    const todayHours = (activeClinic?.openingHours as any)?.[todayDayKey];
+    if (!todayHours || todayHours.isClosed) {
+      return { status: 'Closed Today', open: false, label: 'Off Duty' };
+    }
+    const slotMins = activeClinic?.openingHours?.slotDurationMinutes || 45;
+    return {
+      status: `Available Today: ${todayHours.open} – ${todayHours.close}`,
+      open: true,
+      label: `${slotMins}m slots`,
+    };
+  };
+
+  const todaySchedule = getTodayScheduleSummary();
+
   const displayedAppointments = appointments.filter((apt) => {
-    // 1. Time / Status filter
     if (filterMode === 'today' && apt.appointmentDate !== todayStr) return false;
     if (filterMode === 'pending' && apt.status !== 'pending') return false;
-
-    // 2. Doctor filter (if a specific doctor pill is selected)
-    if (selectedDoctorFilter) {
-      const matchSlug = apt.doctor?.slug === selectedDoctorFilter || apt.doctorId === selectedDoctorFilter;
-      const matchName = apt.doctor?.name?.toLowerCase().includes(selectedDoctorFilter.toLowerCase());
-      if (!matchSlug && !matchName) return false;
-    }
-
     return true;
   });
 
@@ -113,56 +122,29 @@ export const DoctorScheduleScreen: React.FC = () => {
           <RefreshControl refreshing={loading} onRefresh={initializeDoctorPortal} />
         }
       >
-        {/* Doctor Filter Pill Selector */}
-        <View style={styles.doctorFilterSection}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.doctorFilterScroll}
-          >
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => setSelectedDoctorFilter(null)}
-              style={[
-                styles.docFilterPill,
-                selectedDoctorFilter === null && styles.docFilterPillActive,
-              ]}
-            >
-              <Text
+        {/* Doctor Info & Today's Availability Card */}
+        <View style={[styles.docAvailabilityCard, shadows.subtle]}>
+          <View style={styles.docAvatarMini}>
+            <Text style={styles.docAvatarMiniText}>
+              {(activeDoctor?.name || 'Dr').replace(/^Dr[\s\.\-_]+/i, '').charAt(0).toUpperCase() || 'D'}
+            </Text>
+          </View>
+          <View style={styles.docAvailabilityTextCol}>
+            <Text style={styles.docAvailabilityName}>
+              {activeDoctor?.name || doctorUser?.name || 'Dr. Purva Pande'}
+            </Text>
+            <View style={styles.docAvailabilityBadgeRow}>
+              <View
                 style={[
-                  styles.docFilterPillText,
-                  selectedDoctorFilter === null && styles.docFilterPillTextActive,
+                  styles.availabilityDot,
+                  todaySchedule.open ? styles.dotOpen : styles.dotClosed,
                 ]}
-              >
-                All Doctors ({appointments.length})
+              />
+              <Text style={styles.docAvailabilityHours}>
+                {todaySchedule.status} {todaySchedule.open ? `• ${todaySchedule.label}` : ''}
               </Text>
-            </TouchableOpacity>
-
-            {clinicDoctors.map((doc) => {
-              const isSelected = selectedDoctorFilter === doc.slug || selectedDoctorFilter === doc.id;
-              const count = appointments.filter(
-                (a) => a.doctor?.slug === doc.slug || a.doctorId === doc.id || a.doctor?.name === doc.name
-              ).length;
-
-              return (
-                <TouchableOpacity
-                  key={doc.id}
-                  activeOpacity={0.8}
-                  onPress={() => setSelectedDoctorFilter(isSelected ? null : doc.slug)}
-                  style={[styles.docFilterPill, isSelected && styles.docFilterPillActive]}
-                >
-                  <Text
-                    style={[
-                      styles.docFilterPillText,
-                      isSelected && styles.docFilterPillTextActive,
-                    ]}
-                  >
-                    🩺 {doc.name} ({count})
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+            </View>
+          </View>
         </View>
 
         {/* Minimal 3-Pill Status Filter Bar */}
@@ -380,33 +362,60 @@ const styles = StyleSheet.create({
     paddingBottom: 36,
   },
 
-  // Doctor Filter Section
-  doctorFilterSection: {
-    marginBottom: 12,
-  },
-  doctorFilterScroll: {
-    gap: 8,
-  },
-  docFilterPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: borderRadius.pill,
+  // Doctor Availability Summary Card
+  docAvailabilityCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.surface,
+    padding: 12,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.border,
+    marginBottom: 14,
+    gap: 12,
   },
-  docFilterPillActive: {
-    backgroundColor: '#FAF6EE',
-    borderColor: '#E8D29F',
+  docAvatarMini: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  docFilterPillText: {
-    fontSize: typography.fontSizes.caption - 1,
-    fontWeight: typography.fontWeights.semibold,
-    color: colors.textSecondary,
-  },
-  docFilterPillTextActive: {
-    color: colors.primaryDark,
+  docAvatarMiniText: {
+    fontSize: 15,
     fontWeight: typography.fontWeights.bold,
+    color: colors.primaryDark,
+  },
+  docAvailabilityTextCol: {
+    flex: 1,
+  },
+  docAvailabilityName: {
+    fontSize: typography.fontSizes.body - 1,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.text,
+    marginBottom: 2,
+  },
+  docAvailabilityBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  availabilityDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  dotOpen: {
+    backgroundColor: '#2E7D32',
+  },
+  dotClosed: {
+    backgroundColor: '#DC2626',
+  },
+  docAvailabilityHours: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    fontWeight: typography.fontWeights.medium,
   },
 
   // Minimal Status Filter Bar

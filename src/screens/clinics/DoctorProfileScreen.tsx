@@ -59,10 +59,10 @@ export const DoctorProfileScreen: React.FC = () => {
     const targetClinicSlug = clinicSlug || doctor.clinicId || 'clinic_aesthetica';
     analytics.track('booking_started', { doctorSlug: doctor.slug, clinicSlug: targetClinicSlug });
     navigation.navigate('BookingFlow', {
-      screen: 'SelectDoctor',
+      screen: 'SelectProcedure',
       params: {
         clinicSlug: targetClinicSlug,
-        preSelectedDoctorSlug: doctor.slug,
+        doctorSlug: doctor.slug,
       },
     });
   };

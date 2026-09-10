@@ -90,10 +90,11 @@ export const ClinicDetailScreen: React.FC = () => {
     if (!clinic) return;
     analytics.track('booking_started', { clinicSlug: clinic.slug, procedureSlug, doctorSlug });
     navigation.navigate('BookingFlow', {
-      screen: 'SelectDoctor',
+      screen: procedureSlug ? 'SelectDateTime' : 'SelectProcedure',
       params: {
         clinicSlug: clinic.slug,
-        preSelectedDoctorSlug: doctorSlug,
+        doctorSlug: doctorSlug || clinic.doctors?.[0]?.slug,
+        procedureSlug: procedureSlug,
         preSelectedProcedureSlug: procedureSlug,
       },
     });

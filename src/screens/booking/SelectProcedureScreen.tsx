@@ -74,7 +74,7 @@ export const SelectProcedureScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.stepBox}>
-          <Text style={styles.stepBadge}>STEP 2 OF 5</Text>
+          <Text style={styles.stepBadge}>STEP 1 OF 4</Text>
           <Text style={styles.title}>What is your treatment goal?</Text>
           <Text style={styles.subtitle}>
             Select a specific treatment or choose General Skin Consultation.

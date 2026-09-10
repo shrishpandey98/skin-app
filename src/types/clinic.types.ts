@@ -17,7 +17,8 @@ export interface OpeningHours {
   friday?: DayHours;
   saturday?: DayHours;
   sunday?: DayHours;
-  [key: string]: DayHours | undefined;
+  slotDurationMinutes?: number; // e.g. 15, 30, 45, 60
+  [key: string]: any;
 }
 
 export interface ClinicProcedurePricing {

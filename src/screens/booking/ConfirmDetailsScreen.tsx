@@ -71,7 +71,9 @@ export const ConfirmDetailsScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.stepBox}>
-          <Text style={styles.stepBadge}>STEP 4 OF 5</Text>
+          <Text style={styles.stepBadge}>
+            {procedureSlug ? 'STEP 2 OF 3' : 'STEP 3 OF 4'}
+          </Text>
           <Text style={styles.title}>Who is this booking for?</Text>
           <Text style={styles.subtitle}>
             Enter patient contact information for appointment verification & reminders.

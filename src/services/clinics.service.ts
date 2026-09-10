@@ -105,6 +105,8 @@ function attachClinicSpecificProcedures(clinic: Clinic): Clinic {
     ...clinic,
     procedures: mergedProcs,
     doctors: mergedDoctors,
+  };
+}
 
 async function syncPublishedClinicsFromStorage(): Promise<Clinic[]> {
   try {

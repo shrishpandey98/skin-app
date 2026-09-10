@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,60 +8,186 @@ import {
   SafeAreaView,
   StatusBar,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { ArrowLeft, Calendar as CalendarIcon, Clock, Sun, Sunset, Moon } from 'lucide-react-native';
+import { ArrowLeft, Calendar as CalendarIcon, Clock, Sun, Sunset, Moon, AlertCircle } from 'lucide-react-native';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
+import { clinicsService } from '../../services/clinics.service';
+import { Clinic, OpeningHours } from '../../types/clinic.types';
 import { colors, borderRadius, typography, shadows } from '../../constants/theme';
 
-// Generate next 10 dates
-const generateDates = () => {
-  const dates = [];
-  const today = new Date();
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const DAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-  for (let i = 0; i < 10; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
+function parseTimeToMinutes(timeStr?: string): number {
+  if (!timeStr) return 0;
+  const clean = timeStr.trim().toUpperCase();
+  const match = clean.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/);
+  if (!match) return 0;
+  let hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  const meridiem = match[3];
 
-    const dateStr = d.toISOString().split('T')[0];
-    const dayName = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : dayNames[d.getDay()];
-    const dayNumber = d.getDate();
-    const month = monthNames[d.getMonth()];
+  if (meridiem === 'PM' && hours < 12) hours += 12;
+  if (meridiem === 'AM' && hours === 12) hours = 0;
+  return hours * 60 + minutes;
+}
 
-    dates.push({
-      dateStr,
-      dayName,
-      dayNumber,
-      month,
-      fullLabel: `${dayName}, ${dayNumber} ${month}`,
-    });
-  }
-  return dates;
-};
-
-const TIME_SLOTS = {
-  morning: ['10:00 AM', '10:45 AM', '11:30 AM', '12:15 PM'],
-  afternoon: ['01:30 PM', '02:15 PM', '03:00 PM', '03:45 PM', '04:30 PM'],
-  evening: ['05:15 PM', '06:00 PM', '06:45 PM', '07:15 PM'],
-};
+function formatMinutesToTime(mins: number): string {
+  let hours = Math.floor(mins / 60);
+  const m = mins % 60;
+  const meridiem = hours >= 12 ? 'PM' : 'AM';
+  if (hours > 12) hours -= 12;
+  if (hours === 0) hours = 12;
+  const formattedMin = m < 10 ? `0${m}` : `${m}`;
+  const formattedHour = hours < 10 ? `0${hours}` : `${hours}`;
+  return `${formattedHour}:${formattedMin} ${meridiem}`;
+}
 
 export const SelectDateTimeScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { clinicSlug, doctorSlug, procedureSlug } = route.params || {};
 
-  const availableDates = generateDates();
-  const [selectedDate, setSelectedDate] = useState(availableDates[0].dateStr);
-  const [selectedTime, setSelectedTime] = useState<string | null>('11:30 AM');
+  const [clinic, setClinic] = useState<Clinic | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadClinicData();
+  }, [clinicSlug]);
+
+  const loadClinicData = async () => {
+    setLoading(true);
+    const c = await clinicsService.getClinicBySlug(clinicSlug || 'aesthetica-skin-and-laser-clinic');
+    if (c) {
+      setClinic(c);
+      // Auto-select first available open date
+      const dates = generateDatesList(c.openingHours);
+      const firstOpen = dates.find((d) => !d.isClosed);
+      if (firstOpen) {
+        setSelectedDate(firstOpen.dateStr);
+        const slots = getSlotsForDate(firstOpen.dateStr, c.openingHours);
+        const allSlots = [...slots.morning, ...slots.afternoon, ...slots.evening];
+        if (allSlots.length > 0) {
+          setSelectedTime(allSlots[0]);
+        }
+      } else if (dates.length > 0) {
+        setSelectedDate(dates[0].dateStr);
+      }
+    }
+    setLoading(false);
+  };
+
+  const generateDatesList = (openingHours?: OpeningHours) => {
+    const dates = [];
+    const today = new Date();
+
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+
+      const dateStr = d.toISOString().split('T')[0];
+      const dayIndex = d.getDay();
+      const dayKey = DAY_KEYS[dayIndex];
+      const dayName = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : DAY_NAMES[dayIndex];
+      const dayNumber = d.getDate();
+      const month = MONTH_NAMES[d.getMonth()];
+
+      const dayConfig = (openingHours as any)?.[dayKey];
+      const isClosed = !dayConfig || dayConfig.isClosed || !dayConfig.open || dayConfig.open === 'Closed';
+
+      dates.push({
+        dateStr,
+        dayName,
+        dayNumber,
+        month,
+        fullLabel: `${dayName}, ${dayNumber} ${month}`,
+        isClosed,
+        openHours: dayConfig ? `${dayConfig.open} – ${dayConfig.close}` : 'Closed',
+      });
+    }
+    return dates;
+  };
+
+  const getSlotsForDate = (dateStr: string, openingHours?: OpeningHours) => {
+    if (!dateStr || !openingHours) {
+      return { morning: [], afternoon: [], evening: [] };
+    }
+
+    const dateObj = new Date(dateStr + 'T00:00:00');
+    const dayKey = DAY_KEYS[dateObj.getDay()];
+    const dayConfig = (openingHours as any)?.[dayKey];
+
+    if (!dayConfig || dayConfig.isClosed || !dayConfig.open || dayConfig.open === 'Closed') {
+      return { morning: [], afternoon: [], evening: [] };
+    }
+
+    const startMins = parseTimeToMinutes(dayConfig.open) || 600; // 10:00 AM default
+    const endMins = parseTimeToMinutes(dayConfig.close) || 1140; // 07:00 PM default
+    const slotDuration = openingHours.slotDurationMinutes || 45;
+
+    const morning: string[] = [];
+    const afternoon: string[] = [];
+    const evening: string[] = [];
+
+    // Filter past slots if date is today
+    const now = new Date();
+    const isToday = dateStr === now.toISOString().split('T')[0];
+    const currentMins = now.getHours() * 60 + now.getMinutes() + 15; // 15 min buffer
+
+    for (let t = startMins; t + slotDuration <= endMins; t += slotDuration) {
+      if (isToday && t <= currentMins) {
+        continue;
+      }
+
+      const formatted = formatMinutesToTime(t);
+      if (t < 720) {
+        // Before 12:00 PM
+        morning.push(formatted);
+      } else if (t < 1020) {
+        // 12:00 PM to 05:00 PM
+        afternoon.push(formatted);
+      } else {
+        // 05:00 PM onwards
+        evening.push(formatted);
+      }
+    }
+
+    return { morning, afternoon, evening };
+  };
+
+  const datesList = generateDatesList(clinic?.openingHours);
+  const activeSlots = getSlotsForDate(selectedDate, clinic?.openingHours);
+  const hasAnySlots =
+    activeSlots.morning.length > 0 ||
+    activeSlots.afternoon.length > 0 ||
+    activeSlots.evening.length > 0;
+
+  const selectedDateItem = datesList.find((d) => d.dateStr === selectedDate);
+
+  const handleDateSelect = (dateStr: string) => {
+    setSelectedDate(dateStr);
+    const slots = getSlotsForDate(dateStr, clinic?.openingHours);
+    const allSlots = [...slots.morning, ...slots.afternoon, ...slots.evening];
+    if (allSlots.length > 0) {
+      if (!selectedTime || !allSlots.includes(selectedTime)) {
+        setSelectedTime(allSlots[0]);
+      }
+    } else {
+      setSelectedTime(null);
+    }
+  };
 
   const handleContinue = () => {
     if (!selectedDate || !selectedTime) return;
 
     navigation.navigate('ConfirmDetails', {
       clinicSlug,
-      doctorSlug,
+      doctorSlug: doctorSlug || (clinic?.doctors?.[0]?.slug),
       procedureSlug,
       appointmentDate: selectedDate,
       appointmentTime: selectedTime,
@@ -87,10 +213,12 @@ export const SelectDateTimeScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.stepBox}>
-          <Text style={styles.stepBadge}>STEP 3 OF 5</Text>
+          <Text style={styles.stepBadge}>
+            {procedureSlug ? 'STEP 1 OF 3' : 'STEP 2 OF 4'}
+          </Text>
           <Text style={styles.title}>When suits you best?</Text>
           <Text style={styles.subtitle}>
-            Choose an appointment date and preferred in-clinic consultation slot.
+            Choose an appointment date and consultation slot aligned with doctor working hours.
           </Text>
         </View>
 
@@ -106,15 +234,16 @@ export const SelectDateTimeScreen: React.FC = () => {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.dateScroll}
           >
-            {availableDates.map((item) => {
+            {datesList.map((item) => {
               const isSelected = selectedDate === item.dateStr;
               return (
                 <TouchableOpacity
                   key={item.dateStr}
                   activeOpacity={0.8}
-                  onPress={() => setSelectedDate(item.dateStr)}
+                  onPress={() => handleDateSelect(item.dateStr)}
                   style={[
                     styles.dateCard,
+                    item.isClosed && styles.dateCardClosed,
                     isSelected ? styles.dateCardSelected : styles.dateCardUnselected,
                     shadows.subtle,
                   ]}
@@ -123,6 +252,7 @@ export const SelectDateTimeScreen: React.FC = () => {
                     style={[
                       styles.dayName,
                       isSelected ? styles.textSelected : styles.textUnselected,
+                      item.isClosed && !isSelected && styles.textMutedDay,
                     ]}
                   >
                     {item.dayName}
@@ -131,6 +261,7 @@ export const SelectDateTimeScreen: React.FC = () => {
                     style={[
                       styles.dayNumber,
                       isSelected ? styles.textSelected : styles.textDark,
+                      item.isClosed && !isSelected && styles.textMutedDay,
                     ]}
                   >
                     {item.dayNumber}
@@ -139,10 +270,16 @@ export const SelectDateTimeScreen: React.FC = () => {
                     style={[
                       styles.month,
                       isSelected ? styles.textSelected : styles.textUnselected,
+                      item.isClosed && !isSelected && styles.textMutedDay,
                     ]}
                   >
                     {item.month}
                   </Text>
+                  {item.isClosed ? (
+                    <View style={styles.closedPill}>
+                      <Text style={styles.closedPillText}>Off</Text>
+                    </View>
+                  ) : null}
                 </TouchableOpacity>
               );
             })}
@@ -156,104 +293,124 @@ export const SelectDateTimeScreen: React.FC = () => {
             <Text style={styles.sectionTitle}>Available In-Clinic Slots</Text>
           </View>
 
-          {/* Morning Slots */}
-          <View style={styles.timeGroup}>
-            <View style={styles.timeGroupHeader}>
-              <Sun size={14} color="#D97706" />
-              <Text style={styles.timeGroupTitle}>Morning</Text>
+          {selectedDateItem?.isClosed || !hasAnySlots ? (
+            <View style={styles.closedNoticeBox}>
+              <AlertCircle size={20} color="#D97706" />
+              <View style={styles.closedNoticeTextCol}>
+                <Text style={styles.closedNoticeTitle}>No Slots Available on this Day</Text>
+                <Text style={styles.closedNoticeSub}>
+                  The doctor is off duty or all slots for today have concluded. Please select another date above.
+                </Text>
+              </View>
             </View>
-            <View style={styles.slotsGrid}>
-              {TIME_SLOTS.morning.map((slot) => {
-                const isSelected = selectedTime === slot;
-                return (
-                  <TouchableOpacity
-                    key={slot}
-                    activeOpacity={0.8}
-                    onPress={() => setSelectedTime(slot)}
-                    style={[
-                      styles.slotPill,
-                      isSelected ? styles.slotSelected : styles.slotUnselected,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.slotText,
-                        isSelected ? styles.slotTextSelected : styles.slotTextUnselected,
-                      ]}
-                    >
-                      {slot}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
+          ) : (
+            <>
+              {/* Morning Slots */}
+              {activeSlots.morning.length > 0 ? (
+                <View style={styles.timeGroup}>
+                  <View style={styles.timeGroupHeader}>
+                    <Sun size={14} color="#D97706" />
+                    <Text style={styles.timeGroupTitle}>Morning</Text>
+                  </View>
+                  <View style={styles.slotsGrid}>
+                    {activeSlots.morning.map((slot) => {
+                      const isSelected = selectedTime === slot;
+                      return (
+                        <TouchableOpacity
+                          key={slot}
+                          activeOpacity={0.8}
+                          onPress={() => setSelectedTime(slot)}
+                          style={[
+                            styles.slotPill,
+                            isSelected ? styles.slotSelected : styles.slotUnselected,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.slotText,
+                              isSelected ? styles.slotTextSelected : styles.slotTextUnselected,
+                            ]}
+                          >
+                            {slot}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              ) : null}
 
-          {/* Afternoon Slots */}
-          <View style={styles.timeGroup}>
-            <View style={styles.timeGroupHeader}>
-              <Sunset size={14} color="#EA580C" />
-              <Text style={styles.timeGroupTitle}>Afternoon</Text>
-            </View>
-            <View style={styles.slotsGrid}>
-              {TIME_SLOTS.afternoon.map((slot) => {
-                const isSelected = selectedTime === slot;
-                return (
-                  <TouchableOpacity
-                    key={slot}
-                    activeOpacity={0.8}
-                    onPress={() => setSelectedTime(slot)}
-                    style={[
-                      styles.slotPill,
-                      isSelected ? styles.slotSelected : styles.slotUnselected,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.slotText,
-                        isSelected ? styles.slotTextSelected : styles.slotTextUnselected,
-                      ]}
-                    >
-                      {slot}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
+              {/* Afternoon Slots */}
+              {activeSlots.afternoon.length > 0 ? (
+                <View style={styles.timeGroup}>
+                  <View style={styles.timeGroupHeader}>
+                    <Sunset size={14} color="#EA580C" />
+                    <Text style={styles.timeGroupTitle}>Afternoon</Text>
+                  </View>
+                  <View style={styles.slotsGrid}>
+                    {activeSlots.afternoon.map((slot) => {
+                      const isSelected = selectedTime === slot;
+                      return (
+                        <TouchableOpacity
+                          key={slot}
+                          activeOpacity={0.8}
+                          onPress={() => setSelectedTime(slot)}
+                          style={[
+                            styles.slotPill,
+                            isSelected ? styles.slotSelected : styles.slotUnselected,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.slotText,
+                              isSelected ? styles.slotTextSelected : styles.slotTextUnselected,
+                            ]}
+                          >
+                            {slot}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              ) : null}
 
-          {/* Evening Slots */}
-          <View style={styles.timeGroup}>
-            <View style={styles.timeGroupHeader}>
-              <Moon size={14} color="#4F46E5" />
-              <Text style={styles.timeGroupTitle}>Evening</Text>
-            </View>
-            <View style={styles.slotsGrid}>
-              {TIME_SLOTS.evening.map((slot) => {
-                const isSelected = selectedTime === slot;
-                return (
-                  <TouchableOpacity
-                    key={slot}
-                    activeOpacity={0.8}
-                    onPress={() => setSelectedTime(slot)}
-                    style={[
-                      styles.slotPill,
-                      isSelected ? styles.slotSelected : styles.slotUnselected,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.slotText,
-                        isSelected ? styles.slotTextSelected : styles.slotTextUnselected,
-                      ]}
-                    >
-                      {slot}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
+              {/* Evening Slots */}
+              {activeSlots.evening.length > 0 ? (
+                <View style={styles.timeGroup}>
+                  <View style={styles.timeGroupHeader}>
+                    <Moon size={14} color="#4F46E5" />
+                    <Text style={styles.timeGroupTitle}>Evening</Text>
+                  </View>
+                  <View style={styles.slotsGrid}>
+                    {activeSlots.evening.map((slot) => {
+                      const isSelected = selectedTime === slot;
+                      return (
+                        <TouchableOpacity
+                          key={slot}
+                          activeOpacity={0.8}
+                          onPress={() => setSelectedTime(slot)}
+                          style={[
+                            styles.slotPill,
+                            isSelected ? styles.slotSelected : styles.slotUnselected,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.slotText,
+                              isSelected ? styles.slotTextSelected : styles.slotTextUnselected,
+                            ]}
+                          >
+                            {slot}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              ) : null}
+            </>
+          )}
         </View>
       </ScrollView>
 
@@ -355,6 +512,51 @@ const styles = StyleSheet.create({
   dateCardSelected: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
+  },
+  dateCardClosed: {
+    backgroundColor: colors.surfaceSubtle,
+    borderColor: colors.border,
+    opacity: 0.7,
+  },
+  closedPill: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: borderRadius.pill,
+    marginTop: 3,
+  },
+  closedPillText: {
+    fontSize: 9,
+    fontWeight: typography.fontWeights.bold,
+    color: '#DC2626',
+  },
+  textMutedDay: {
+    color: colors.textMuted,
+  },
+  closedNoticeBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FFFBEB',
+    padding: 14,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    gap: 12,
+    marginTop: 8,
+  },
+  closedNoticeTextCol: {
+    flex: 1,
+  },
+  closedNoticeTitle: {
+    fontSize: typography.fontSizes.body - 1,
+    fontWeight: typography.fontWeights.bold,
+    color: '#92400E',
+    marginBottom: 4,
+  },
+  closedNoticeSub: {
+    fontSize: typography.fontSizes.caption,
+    color: '#B45309',
+    lineHeight: 18,
   },
   dayName: {
     fontSize: typography.fontSizes.micro,

@@ -218,7 +218,9 @@ export const ReviewBookingScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.stepBox}>
-          <Text style={styles.stepBadge}>STEP 5 OF 5 • FINAL STEP</Text>
+          <Text style={styles.stepBadge}>
+            {procedureSlug ? 'STEP 3 OF 3 • FINAL STEP' : 'STEP 4 OF 4 • FINAL STEP'}
+          </Text>
           <Text style={styles.title}>Review appointment</Text>
           <Text style={styles.subtitle}>
             Please review the details below before confirming your in-clinic consultation.

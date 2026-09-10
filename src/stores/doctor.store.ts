@@ -56,6 +56,7 @@ interface DoctorState {
   addDoctorToClinic: (payload: NewDoctorPayload) => Promise<Doctor>;
   removeDoctor: (doctorId: string) => Promise<void>;
   updateDoctor: (doctorId: string, updates: Partial<Doctor>) => Promise<void>;
+  updatePrimaryDoctor: (updates: Partial<Doctor>) => Promise<Doctor>;
   toggleDoctorActive: (doctorId: string) => Promise<void>;
   updateClinicProfile: (updates: Partial<Clinic>) => Promise<void>;
   updateUserProfile: (updates: { name: string; email: string; phone?: string }) => Promise<void>;
@@ -119,13 +120,14 @@ const DEFAULT_CLINIC: Clinic = {
   latitude: 0,
   longitude: 0,
   openingHours: {
-    monday: { open: '', close: '' },
-    tuesday: { open: '', close: '' },
-    wednesday: { open: '', close: '' },
-    thursday: { open: '', close: '' },
-    friday: { open: '', close: '' },
-    saturday: { open: '', close: '' },
+    monday: { open: '10:00 AM', close: '07:00 PM', isClosed: false },
+    tuesday: { open: '10:00 AM', close: '07:00 PM', isClosed: false },
+    wednesday: { open: '10:00 AM', close: '07:00 PM', isClosed: false },
+    thursday: { open: '10:00 AM', close: '07:00 PM', isClosed: false },
+    friday: { open: '10:00 AM', close: '07:00 PM', isClosed: false },
+    saturday: { open: '10:00 AM', close: '05:00 PM', isClosed: false },
     sunday: { open: '', close: '', isClosed: true },
+    slotDurationMinutes: 45,
   },
   verificationStatus: 'verified',
   rating: 5.0,
@@ -643,6 +645,56 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
       doctorUser: get().doctorUser,
       activeClinic: get().activeClinic,
     });
+  },
+
+  updatePrimaryDoctor: async (updates: Partial<Doctor>) => {
+    const currentDoc = get().activeDoctor && get().activeDoctor.name ? get().activeDoctor : {
+      id: 'doc_' + Date.now(),
+      name: 'Dr. Purva Pande',
+      slug: 'dr-purva-pande',
+      photoUrl: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=600&auto=format&fit=crop',
+      qualification: 'MBBS, MD - Dermatology',
+      specialization: 'Aesthetic Dermatology',
+      experienceYears: 7,
+      bio: 'Expert clinical & aesthetic dermatologist specializing in advanced skin & laser procedures.',
+      rating: 5.0,
+      reviewCount: 0,
+      clinicId: get().activeClinic.id,
+      clinicName: get().activeClinic.name,
+      isActive: true,
+      proceduresOffered: [],
+    };
+
+    const formattedName = updates.name !== undefined
+      ? (updates.name.startsWith('Dr') ? updates.name.trim() : `Dr. ${updates.name.trim()}`)
+      : currentDoc.name;
+
+    const slug = formattedName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+    const updatedDoc: Doctor = {
+      ...currentDoc,
+      ...updates,
+      name: formattedName,
+      slug: slug,
+      clinicId: get().activeClinic.id,
+      clinicName: get().activeClinic.name,
+    };
+
+    const singleDocList = [updatedDoc];
+    doctorService.setClinicDoctors(singleDocList);
+
+    set({
+      activeDoctor: updatedDoc,
+      clinicDoctors: singleDocList,
+    });
+
+    await persistClinicData({
+      clinicDoctors: singleDocList,
+      doctorUser: get().doctorUser,
+      activeClinic: get().activeClinic,
+    });
+
+    return updatedDoc;
   },
 
   toggleDoctorActive: async (doctorId: string) => {

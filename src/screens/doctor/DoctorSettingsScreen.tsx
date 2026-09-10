@@ -41,15 +41,13 @@ export const DoctorSettingsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const {
     activeClinic,
+    activeDoctor,
     clinicDoctors,
     doctorUser,
     isClinicPublished,
     toggleClinicPublish,
     doctorLogout,
-    addDoctorToClinic,
-    removeDoctor,
-    updateDoctor,
-    toggleDoctorActive,
+    updatePrimaryDoctor,
     updateClinicProfile,
     updateUserProfile,
     updateOperatingHours,
@@ -57,14 +55,16 @@ export const DoctorSettingsScreen: React.FC = () => {
     loading,
   } = useDoctorStore();
 
-  // 1. Add Doctor Modal State
-  const [isAddDoctorModalOpen, setIsAddDoctorModalOpen] = useState(false);
+  const currentDoctor = activeDoctor && activeDoctor.name ? activeDoctor : (clinicDoctors[0] || {} as any);
+
+  // 1. Doctor Profile Modal State
+  const [isEditDoctorModalOpen, setIsEditDoctorModalOpen] = useState(false);
   const [docName, setDocName] = useState('');
   const [docSpecialization, setDocSpecialization] = useState('');
   const [docQualification, setDocQualification] = useState('');
   const [docExpYears, setDocExpYears] = useState('');
+  const [docBio, setDocBio] = useState('');
   const [savingDoctor, setSavingDoctor] = useState(false);
-  const [addDoctorError, setAddDoctorError] = useState('');
 
   // 2. Edit User Profile Modal State
   const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
@@ -83,27 +83,24 @@ export const DoctorSettingsScreen: React.FC = () => {
   const [clinicCity, setClinicCity] = useState('');
   const [savingClinic, setSavingClinic] = useState(false);
 
-  // 4. Edit Operating Hours Modal State
+  // 4. Interactive Weekly Schedule Modal State
   const [isEditHoursModalOpen, setIsEditHoursModalOpen] = useState(false);
-  const [weekdayHours, setWeekdayHours] = useState('');
-  const [saturdayHours, setSaturdayHours] = useState('');
-  const [sundayHours, setSundayHours] = useState('');
+  const [scheduleState, setScheduleState] = useState<Record<string, { open: string; close: string; isClosed: boolean }>>({
+    monday: { open: '10:00 AM', close: '07:00 PM', isClosed: false },
+    tuesday: { open: '10:00 AM', close: '07:00 PM', isClosed: false },
+    wednesday: { open: '10:00 AM', close: '07:00 PM', isClosed: false },
+    thursday: { open: '10:00 AM', close: '07:00 PM', isClosed: false },
+    friday: { open: '10:00 AM', close: '07:00 PM', isClosed: false },
+    saturday: { open: '10:00 AM', close: '05:00 PM', isClosed: false },
+    sunday: { open: 'Closed', close: 'Closed', isClosed: true },
+  });
+  const [slotDuration, setSlotDuration] = useState<number>(45);
   const [savingHours, setSavingHours] = useState(false);
-
-  // 5. Edit Doctor Modal State
-  const [isEditDoctorModalOpen, setIsEditDoctorModalOpen] = useState(false);
-  const [editingDoctorId, setEditingDoctorId] = useState<string | null>(null);
-  const [editDocName, setEditDocName] = useState('');
-  const [editDocSpecialization, setEditDocSpecialization] = useState('');
-  const [editDocQualification, setEditDocQualification] = useState('');
-  const [editDocExpYears, setEditDocExpYears] = useState('');
-  const [savingEditDoctor, setSavingEditDoctor] = useState(false);
 
   // In-app Confirmation Modal States (100% web & mobile reliable)
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [pendingPublishVal, setPendingPublishVal] = useState(false);
-  const [deleteConfirmDoc, setDeleteConfirmDoc] = useState<{ id: string; name: string } | null>(null);
 
   const handleTogglePublish = (nextVal: boolean) => {
     setPendingPublishVal(nextVal);
@@ -200,141 +197,113 @@ export const DoctorSettingsScreen: React.FC = () => {
     }
   };
 
-  // Open Edit Hours Modal
+  // Open Schedule Modal
   const handleOpenEditHours = () => {
-    setWeekdayHours(activeClinic.openingHours?.monday?.open ? `${activeClinic.openingHours.monday.open} – ${activeClinic.openingHours.monday.close}` : '');
-    setSaturdayHours(activeClinic.openingHours?.saturday?.open ? `${activeClinic.openingHours.saturday.open} – ${activeClinic.openingHours.saturday.close}` : '');
-    setSundayHours(activeClinic.openingHours?.sunday?.isClosed ? 'Closed' : (activeClinic.openingHours?.sunday?.open ? `${activeClinic.openingHours.sunday.open} – ${activeClinic.openingHours.sunday.close}` : ''));
+    const hours = activeClinic.openingHours || {};
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const currentSched: any = {};
+    for (const d of days) {
+      const val = (hours as any)[d];
+      if (val) {
+        currentSched[d] = {
+          open: val.open || '10:00 AM',
+          close: val.close || '07:00 PM',
+          isClosed: !!val.isClosed,
+        };
+      } else {
+        currentSched[d] = d === 'sunday'
+          ? { open: 'Closed', close: 'Closed', isClosed: true }
+          : { open: '10:00 AM', close: '07:00 PM', isClosed: false };
+      }
+    }
+    setScheduleState(currentSched);
+    setSlotDuration(hours.slotDurationMinutes || 45);
     setIsEditHoursModalOpen(true);
   };
 
-  const handleSaveHours = async () => {
+  const handleSaveSchedule = async () => {
     setSavingHours(true);
     try {
-      const [wOpen, wClose] = weekdayHours.includes('–') ? weekdayHours.split('–').map(s => s.trim()) : ['10:00 AM', '07:00 PM'];
-      const [sOpen, sClose] = saturdayHours.includes('–') ? saturdayHours.split('–').map(s => s.trim()) : ['10:00 AM', '06:30 PM'];
-      const isSunClosed = sundayHours.trim().toLowerCase() === 'closed';
-      const [sunOpen, sunClose] = (!isSunClosed && sundayHours.includes('–')) ? sundayHours.split('–').map(s => s.trim()) : ['Closed', 'Closed'];
-
-      const newHours = {
-        monday: { open: wOpen || '10:00 AM', close: wClose || '07:00 PM' },
-        tuesday: { open: wOpen || '10:00 AM', close: wClose || '07:00 PM' },
-        wednesday: { open: wOpen || '10:00 AM', close: wClose || '07:00 PM' },
-        thursday: { open: wOpen || '10:00 AM', close: wClose || '07:00 PM' },
-        friday: { open: wOpen || '10:00 AM', close: wClose || '07:00 PM' },
-        saturday: { open: sOpen || '10:00 AM', close: sClose || '06:30 PM' },
-        sunday: { open: sunOpen || 'Closed', close: sunClose || 'Closed', isClosed: isSunClosed },
+      const updatedHours: any = {
+        ...scheduleState,
+        slotDurationMinutes: slotDuration,
       };
-
-      await updateOperatingHours(newHours);
+      await updateOperatingHours(updatedHours);
       setIsEditHoursModalOpen(false);
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'Failed to update hours');
+      Alert.alert('Error', e?.message || 'Failed to update schedule');
     } finally {
       setSavingHours(false);
     }
   };
 
-  // Add Doctor
+  const handleApplyMondayToAll = () => {
+    const mon = scheduleState.monday || { open: '10:00 AM', close: '07:00 PM', isClosed: false };
+    setScheduleState((prev) => ({
+      ...prev,
+      tuesday: { ...mon },
+      wednesday: { ...mon },
+      thursday: { ...mon },
+      friday: { ...mon },
+      saturday: { ...mon, close: '05:00 PM' },
+    }));
+  };
+
+  // Open Doctor Profile Modal
+  const handleOpenEditDoctor = () => {
+    setDocName(currentDoctor?.name || 'Dr. Purva Pande');
+    setDocSpecialization(currentDoctor?.specialization || 'Aesthetic Dermatology');
+    setDocQualification(currentDoctor?.qualification || 'MBBS, MD - Dermatology');
+    setDocExpYears(currentDoctor?.experienceYears ? String(currentDoctor.experienceYears) : '7');
+    setDocBio(currentDoctor?.bio || '');
+    setIsEditDoctorModalOpen(true);
+  };
+
   const handleSaveDoctor = async () => {
     if (!docName.trim()) {
-      setAddDoctorError('Please enter doctor name');
+      Alert.alert('Required', 'Please enter doctor name');
       return;
     }
-    if (!docSpecialization.trim()) {
-      setAddDoctorError('Please enter specialization');
-      return;
-    }
-
+    setSavingDoctor(true);
     try {
-      setSavingDoctor(true);
-      setAddDoctorError('');
-      await addDoctorToClinic({
+      await updatePrimaryDoctor({
         name: docName.trim(),
-        specialization: docSpecialization.trim(),
-        qualification: docQualification.trim() || 'MBBS, MD Dermatology',
-        experienceYears: parseInt(docExpYears) || 0,
+        specialization: docSpecialization.trim() || 'Aesthetic Dermatology',
+        qualification: docQualification.trim() || 'MBBS, MD',
+        experienceYears: parseInt(docExpYears, 10) || 5,
+        bio: docBio.trim() || `${docName.trim()} is an experienced specialist.`,
       });
-      setIsAddDoctorModalOpen(false);
-      setDocName('');
-      setDocSpecialization('');
-      setDocQualification('');
-      setDocExpYears('');
+      setIsEditDoctorModalOpen(false);
     } catch (e: any) {
-      setAddDoctorError(e?.message || 'Failed to add doctor');
+      Alert.alert('Error', e?.message || 'Failed to update doctor profile');
     } finally {
       setSavingDoctor(false);
     }
   };
 
-  // Open Edit Doctor Modal
-  const handleOpenEditDoctor = (doc: any) => {
-    setEditingDoctorId(doc.id);
-    setEditDocName(doc.name);
-    setEditDocSpecialization(doc.specialization || '');
-    setEditDocQualification(doc.qualification || '');
-    setEditDocExpYears(doc.experienceYears ? String(doc.experienceYears) : '');
-    setIsEditDoctorModalOpen(true);
-  };
-
-  const handleSaveEditDoctor = async () => {
-    if (!editingDoctorId || !editDocName.trim()) {
-      Alert.alert('Required', 'Please enter doctor name');
-      return;
-    }
-    setSavingEditDoctor(true);
-    try {
-      await updateDoctor(editingDoctorId, {
-        name: editDocName.trim(),
-        specialization: editDocSpecialization.trim() || 'Dermatology & Aesthetic Specialist',
-        qualification: editDocQualification.trim() || 'MBBS, MD',
-        experienceYears: parseInt(editDocExpYears, 10) || 5,
-      });
-      setIsEditDoctorModalOpen(false);
-    } catch (e: any) {
-      Alert.alert('Error', e?.message || 'Failed to update doctor details');
-    } finally {
-      setSavingEditDoctor(false);
-    }
-  };
-
-  // Remove Doctor
-  const handleRemoveDoctor = (docId: string, doctorName: string) => {
-    setDeleteConfirmDoc({ id: docId, name: doctorName });
-  };
-
-  const handleConfirmRemoveDoctor = async () => {
-    if (deleteConfirmDoc) {
-      const docId = deleteConfirmDoc.id;
-      setDeleteConfirmDoc(null);
-      await removeDoctor(docId);
-    }
-  };
-
   const getDayRows = () => {
-    const hours = activeClinic.openingHours;
-    if (!hours || !hours.monday || !hours.monday.open) {
-      return [
-        { day: 'Monday – Friday', hours: 'Not configured yet' },
-        { day: 'Saturday', hours: 'Not configured yet' },
-        { day: 'Sunday', hours: 'Not configured yet' },
-      ];
-    }
-
-    return [
-      {
-        day: 'Monday – Friday',
-        hours: `${hours.monday.open} – ${hours.monday.close}`,
-      },
-      {
-        day: 'Saturday',
-        hours: hours.saturday?.open ? `${hours.saturday.open} – ${hours.saturday.close}` : 'Not configured yet',
-      },
-      {
-        day: 'Sunday',
-        hours: hours.sunday?.isClosed ? 'Closed' : (hours.sunday?.open ? `${hours.sunday.open} – ${hours.sunday.close}` : 'Closed'),
-      },
+    const hours = activeClinic.openingHours || {};
+    const days = [
+      { key: 'monday', label: 'Monday' },
+      { key: 'tuesday', label: 'Tuesday' },
+      { key: 'wednesday', label: 'Wednesday' },
+      { key: 'thursday', label: 'Thursday' },
+      { key: 'friday', label: 'Friday' },
+      { key: 'saturday', label: 'Saturday' },
+      { key: 'sunday', label: 'Sunday' },
     ];
+
+    return days.map((d) => {
+      const val = (hours as any)[d.key];
+      if (!val || val.isClosed) {
+        return { day: d.label, hours: 'Closed', isClosed: true };
+      }
+      return {
+        day: d.label,
+        hours: `${val.open || '10:00 AM'} – ${val.close || '07:00 PM'}`,
+        isClosed: false,
+      };
+    });
   };
 
   return (
@@ -550,12 +519,54 @@ export const DoctorSettingsScreen: React.FC = () => {
           )}
         </View>
 
-        {/* 3. Operating Hours */}
+        {/* 3. Lead Doctor Profile Card */}
+        <View style={[styles.sectionCard, shadows.subtle]}>
+          <View style={styles.sectionHeaderRow}>
+            <View style={styles.cardHeader}>
+              <User size={18} color={colors.primary} />
+              <Text style={styles.cardTitle}>Doctor Profile</Text>
+            </View>
+            <TouchableOpacity
+              activeOpacity={0.75}
+              onPress={handleOpenEditDoctor}
+              style={styles.editBtn}
+            >
+              <Pencil size={13} color={colors.primaryDark} />
+              <Text style={styles.editBtnText}>Edit Profile</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.doctorItemCard}>
+            <View style={styles.docAvatar}>
+              <Text style={styles.docAvatarInitial}>
+                {currentDoctor?.name?.replace(/^Dr[\s\.\-_]+/i, '').charAt(0).toUpperCase() || 'D'}
+              </Text>
+            </View>
+            <View style={styles.docTextCol}>
+              <View style={styles.docNameRow}>
+                <Text style={styles.docNameTitle}>{currentDoctor?.name || 'Dr. Purva Pande'}</Text>
+                <View style={[styles.activeTogglePill, styles.pillActive]}>
+                  <Text style={[styles.activeToggleText, styles.textActive]}>Active Specialist</Text>
+                </View>
+              </View>
+              <Text style={styles.docSpecText}>{currentDoctor?.specialization || 'Aesthetic Dermatology'}</Text>
+              <Text style={styles.docQualText}>
+                {currentDoctor?.qualification || 'MBBS, MD - Dermatology'}
+                {currentDoctor?.experienceYears ? ` • ${currentDoctor.experienceYears}+ yrs exp` : ''}
+              </Text>
+              {currentDoctor?.bio ? (
+                <Text style={styles.docBioText} numberOfLines={3}>{currentDoctor.bio}</Text>
+              ) : null}
+            </View>
+          </View>
+        </View>
+
+        {/* 4. Weekly Schedule & Availability Section */}
         <View style={[styles.sectionCard, shadows.subtle]}>
           <View style={styles.sectionHeaderRow}>
             <View style={styles.cardHeader}>
               <Clock size={18} color={colors.primary} />
-              <Text style={styles.cardTitle}>Operating Hours</Text>
+              <Text style={styles.cardTitle}>Doctor Availability & Schedule</Text>
             </View>
             <TouchableOpacity
               activeOpacity={0.75}
@@ -563,102 +574,39 @@ export const DoctorSettingsScreen: React.FC = () => {
               style={styles.editBtn}
             >
               <Pencil size={13} color={colors.primaryDark} />
-              <Text style={styles.editBtnText}>Edit</Text>
-            </TouchableOpacity>
-          </View>
-
-          {getDayRows().map((d, idx) => (
-            <View key={idx} style={styles.dayRow}>
-              <Text style={styles.dayLabel}>{d.day}</Text>
-              <Text style={[styles.dayHours, d.hours === 'Closed' && styles.closedText]}>
-                {d.hours}
-              </Text>
-            </View>
-          ))}
-        </View>
-
-        {/* 4. Clinic Doctors Section */}
-        <View style={[styles.sectionCard, shadows.subtle]}>
-          <View style={styles.sectionHeaderRow}>
-            <View style={styles.cardHeader}>
-              <User size={18} color={colors.primary} />
-              <Text style={styles.cardTitle}>Clinic Doctors ({clinicDoctors.length})</Text>
-            </View>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => setIsAddDoctorModalOpen(true)}
-              style={styles.addDocBtn}
-            >
-              <UserPlus size={14} color={colors.primaryDark} />
-              <Text style={styles.addDocBtnText}>+ Add Doctor</Text>
+              <Text style={styles.editBtnText}>Manage Schedule</Text>
             </TouchableOpacity>
           </View>
 
           <Text style={styles.doctorSubtext}>
-            Doctors listed here are available for customer booking and schedule assignment.
+            Customer booking slots and open days are generated based on this weekly availability.
           </Text>
 
-          {clinicDoctors.length === 0 ? (
-            <View style={styles.emptyDoctorsBox}>
-              <Text style={styles.emptyDoctorsText}>No doctors added yet.</Text>
-              <Text style={styles.emptyDoctorsSub}>Tap '+ Add Doctor' to add practitioners to your clinic.</Text>
+          <View style={styles.slotDurationBadgeRow}>
+            <Text style={styles.slotDurationLabel}>Consultation Slot Duration:</Text>
+            <View style={styles.slotDurationChip}>
+              <Text style={styles.slotDurationChipText}>
+                {activeClinic.openingHours?.slotDurationMinutes || 45} mins per slot
+              </Text>
             </View>
-          ) : (
-            <View style={styles.docCardsList}>
-              {clinicDoctors.map((doc) => (
-                <View key={doc.id} style={styles.doctorItemCard}>
-                  <View style={styles.docAvatar}>
-                    <Text style={styles.docAvatarInitial}>
-                      {doc.name.charAt(0).toUpperCase() || 'D'}
-                    </Text>
-                  </View>
-                  <View style={styles.docTextCol}>
-                    <View style={styles.docNameRow}>
-                      <Text style={styles.docNameTitle}>{doc.name}</Text>
-                      <View style={styles.docActionRow}>
-                        <TouchableOpacity
-                          activeOpacity={0.7}
-                          onPress={() => toggleDoctorActive(doc.id)}
-                          style={[
-                            styles.activeTogglePill,
-                            doc.isActive ? styles.pillActive : styles.pillInactive,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.activeToggleText,
-                              doc.isActive ? styles.textActive : styles.textInactive,
-                            ]}
-                          >
-                            {doc.isActive ? 'Active' : 'On Leave'}
-                          </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          activeOpacity={0.7}
-                          onPress={() => handleOpenEditDoctor(doc)}
-                          style={styles.editDocBtn}
-                        >
-                          <Pencil size={15} color={colors.primaryDark} />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          activeOpacity={0.7}
-                          onPress={() => handleRemoveDoctor(doc.id, doc.name)}
-                          style={styles.removeDocBtn}
-                        >
-                          <Trash2 size={15} color="#DC2626" />
-                        </TouchableOpacity>
-                      </View>
+          </View>
+
+          <View style={styles.scheduleDaysList}>
+            {getDayRows().map((d, idx) => (
+              <View key={idx} style={styles.dayRow}>
+                <Text style={styles.dayLabel}>{d.day}</Text>
+                <View style={styles.dayHoursRow}>
+                  {d.isClosed ? (
+                    <View style={styles.closedBadge}>
+                      <Text style={styles.closedBadgeText}>Closed</Text>
                     </View>
-                    <Text style={styles.docSpecText}>{doc.specialization}</Text>
-                    <Text style={styles.docQualText}>
-                      {doc.qualification}
-                      {doc.experienceYears ? ` • ${doc.experienceYears} yrs exp` : ''}
-                    </Text>
-                  </View>
+                  ) : (
+                    <Text style={styles.dayHours}>{d.hours}</Text>
+                  )}
                 </View>
-              ))}
-            </View>
-          )}
+              </View>
+            ))}
+          </View>
         </View>
       </ScrollView>
 
@@ -863,7 +811,7 @@ export const DoctorSettingsScreen: React.FC = () => {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* ── MODAL 3: Edit Operating Hours ── */}
+      {/* ── MODAL 3: Interactive Doctor Weekly Schedule & Availability Manager ── */}
       <Modal
         visible={isEditHoursModalOpen}
         transparent
@@ -877,8 +825,8 @@ export const DoctorSettingsScreen: React.FC = () => {
           <View style={[styles.modalCard, shadows.card]}>
             <View style={styles.modalHeader}>
               <View>
-                <Text style={styles.modalTitle}>Edit Operating Hours</Text>
-                <Text style={styles.modalSubtitle}>Configure appointment availability</Text>
+                <Text style={styles.modalTitle}>Weekly Schedule & Hours</Text>
+                <Text style={styles.modalSubtitle}>Configure appointment days, hours & slot duration</Text>
               </View>
               <TouchableOpacity
                 activeOpacity={0.7}
@@ -890,42 +838,163 @@ export const DoctorSettingsScreen: React.FC = () => {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} style={styles.modalForm}>
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Monday – Friday Hours</Text>
-                <TextInput
-                  style={styles.formInput}
-                  placeholder="e.g. 10:00 AM – 07:00 PM"
-                  placeholderTextColor={colors.textMuted}
-                  value={weekdayHours}
-                  onChangeText={setWeekdayHours}
-                />
+              {/* Slot Duration Selector */}
+              <View style={styles.scheduleConfigSection}>
+                <Text style={styles.configSectionTitle}>Appointment Slot Duration</Text>
+                <View style={styles.slotDurationRow}>
+                  {[15, 30, 45, 60].map((mins) => (
+                    <TouchableOpacity
+                      key={mins}
+                      activeOpacity={0.8}
+                      onPress={() => setSlotDuration(mins)}
+                      style={[
+                        styles.slotPickerChip,
+                        slotDuration === mins && styles.slotPickerChipActive,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.slotPickerChipText,
+                          slotDuration === mins && styles.slotPickerChipTextActive,
+                        ]}
+                      >
+                        {mins} mins
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
 
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Saturday Hours</Text>
-                <TextInput
-                  style={styles.formInput}
-                  placeholder="e.g. 10:00 AM – 06:30 PM (or Closed)"
-                  placeholderTextColor={colors.textMuted}
-                  value={saturdayHours}
-                  onChangeText={setSaturdayHours}
-                />
+              {/* Quick Preset Action */}
+              <View style={styles.quickPresetRow}>
+                <Text style={styles.configSectionTitle}>Daily Availability</Text>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={handleApplyMondayToAll}
+                  style={styles.applyPresetBtn}
+                >
+                  <Text style={styles.applyPresetBtnText}>Copy Mon to Weekdays</Text>
+                </TouchableOpacity>
               </View>
 
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Sunday Hours</Text>
-                <TextInput
-                  style={styles.formInput}
-                  placeholder="e.g. Closed (or 11:00 AM – 04:00 PM)"
-                  placeholderTextColor={colors.textMuted}
-                  value={sundayHours}
-                  onChangeText={setSundayHours}
-                />
-              </View>
+              {/* 7 Days List */}
+              {[
+                { key: 'monday', label: 'Monday' },
+                { key: 'tuesday', label: 'Tuesday' },
+                { key: 'wednesday', label: 'Wednesday' },
+                { key: 'thursday', label: 'Thursday' },
+                { key: 'friday', label: 'Friday' },
+                { key: 'saturday', label: 'Saturday' },
+                { key: 'sunday', label: 'Sunday' },
+              ].map((day) => {
+                const dayConfig = scheduleState[day.key] || {
+                  open: '10:00 AM',
+                  close: '07:00 PM',
+                  isClosed: day.key === 'sunday',
+                };
+                const isOpen = !dayConfig.isClosed;
+
+                return (
+                  <View key={day.key} style={styles.dayConfigCard}>
+                    <View style={styles.dayConfigHeader}>
+                      <View style={styles.dayConfigNameCol}>
+                        <Text style={styles.dayConfigName}>{day.label}</Text>
+                        <Text style={[styles.dayStatusIndicator, isOpen ? styles.statusOpen : styles.statusClosed]}>
+                          {isOpen ? `${dayConfig.open} – ${dayConfig.close}` : 'Closed / Off'}
+                        </Text>
+                      </View>
+                      <Switch
+                        value={isOpen}
+                        onValueChange={(val) => {
+                          setScheduleState((prev) => ({
+                            ...prev,
+                            [day.key]: {
+                              ...dayConfig,
+                              isClosed: !val,
+                              open: dayConfig.open || '10:00 AM',
+                              close: dayConfig.close || '07:00 PM',
+                            },
+                          }));
+                        }}
+                        trackColor={{ false: colors.border, true: colors.primary }}
+                        thumbColor={Platform.OS === 'android' ? (isOpen ? colors.primaryDark : '#f4f3f4') : undefined}
+                      />
+                    </View>
+
+                    {isOpen ? (
+                      <View style={styles.timeSelectGrid}>
+                        {/* Start Time Select */}
+                        <View style={styles.timeGroup}>
+                          <Text style={styles.timeGroupLabel}>Start Time</Text>
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timeScroll}>
+                            {['08:00 AM', '09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM'].map((t) => (
+                              <TouchableOpacity
+                                key={t}
+                                activeOpacity={0.8}
+                                onPress={() => {
+                                  setScheduleState((prev) => ({
+                                    ...prev,
+                                    [day.key]: { ...dayConfig, open: t },
+                                  }));
+                                }}
+                                style={[
+                                  styles.miniTimeChip,
+                                  dayConfig.open === t && styles.miniTimeChipActive,
+                                ]}
+                              >
+                                <Text
+                                  style={[
+                                    styles.miniTimeChipText,
+                                    dayConfig.open === t && styles.miniTimeChipTextActive,
+                                  ]}
+                                >
+                                  {t}
+                                </Text>
+                              </TouchableOpacity>
+                            ))}
+                          </ScrollView>
+                        </View>
+
+                        {/* End Time Select */}
+                        <View style={styles.timeGroup}>
+                          <Text style={styles.timeGroupLabel}>End Time</Text>
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timeScroll}>
+                            {['04:00 PM', '05:00 PM', '06:00 PM', '07:00 PM', '08:00 PM', '09:00 PM'].map((t) => (
+                              <TouchableOpacity
+                                key={t}
+                                activeOpacity={0.8}
+                                onPress={() => {
+                                  setScheduleState((prev) => ({
+                                    ...prev,
+                                    [day.key]: { ...dayConfig, close: t },
+                                  }));
+                                }}
+                                style={[
+                                  styles.miniTimeChip,
+                                  dayConfig.close === t && styles.miniTimeChipActive,
+                                ]}
+                              >
+                                <Text
+                                  style={[
+                                    styles.miniTimeChipText,
+                                    dayConfig.close === t && styles.miniTimeChipTextActive,
+                                  ]}
+                                >
+                                  {t}
+                                </Text>
+                              </TouchableOpacity>
+                            ))}
+                          </ScrollView>
+                        </View>
+                      </View>
+                    ) : null}
+                  </View>
+                );
+              })}
 
               <TouchableOpacity
                 activeOpacity={0.88}
-                onPress={handleSaveHours}
+                onPress={handleSaveSchedule}
                 disabled={savingHours}
                 style={[styles.savePrimaryBtn, shadows.subtle]}
               >
@@ -934,7 +1003,7 @@ export const DoctorSettingsScreen: React.FC = () => {
                 ) : (
                   <View style={styles.btnRow}>
                     <Check size={18} color={colors.textInverse} />
-                    <Text style={styles.savePrimaryBtnText}>Save Operating Hours</Text>
+                    <Text style={styles.savePrimaryBtnText}>Save Schedule & Availability</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -943,12 +1012,12 @@ export const DoctorSettingsScreen: React.FC = () => {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* ── MODAL 4: Add Doctor (No Dr. prefix requirement) ── */}
+      {/* ── MODAL 4: Edit Doctor Profile ── */}
       <Modal
-        visible={isAddDoctorModalOpen}
+        visible={isEditDoctorModalOpen}
         transparent
         animationType="slide"
-        onRequestClose={() => setIsAddDoctorModalOpen(false)}
+        onRequestClose={() => setIsEditDoctorModalOpen(false)}
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -957,30 +1026,24 @@ export const DoctorSettingsScreen: React.FC = () => {
           <View style={[styles.modalCard, shadows.card]}>
             <View style={styles.modalHeader}>
               <View>
-                <Text style={styles.modalTitle}>Add Doctor</Text>
-                <Text style={styles.modalSubtitle}>Added to clinic roster for patient bookings</Text>
+                <Text style={styles.modalTitle}>Edit Doctor Profile</Text>
+                <Text style={styles.modalSubtitle}>Lead specialist info displayed to customers</Text>
               </View>
               <TouchableOpacity
                 activeOpacity={0.7}
-                onPress={() => setIsAddDoctorModalOpen(false)}
+                onPress={() => setIsEditDoctorModalOpen(false)}
                 style={styles.modalCloseBtn}
               >
                 <X size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
-            {addDoctorError ? (
-              <View style={styles.modalErrorBox}>
-                <Text style={styles.modalErrorText}>{addDoctorError}</Text>
-              </View>
-            ) : null}
-
             <ScrollView showsVerticalScrollIndicator={false} style={styles.modalForm}>
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Doctor Full Name *</Text>
                 <TextInput
                   style={styles.formInput}
-                  placeholder="e.g. Sunita Kapoor"
+                  placeholder="e.g. Dr. Purva Pande"
                   placeholderTextColor={colors.textMuted}
                   value={docName}
                   onChangeText={setDocName}
@@ -991,7 +1054,7 @@ export const DoctorSettingsScreen: React.FC = () => {
                 <Text style={styles.formLabel}>Specialization *</Text>
                 <TextInput
                   style={styles.formInput}
-                  placeholder="e.g. Aesthetic Cosmetologist & Trichologist"
+                  placeholder="e.g. Aesthetic Dermatology & Laser Surgery"
                   placeholderTextColor={colors.textMuted}
                   value={docSpecialization}
                   onChangeText={setDocSpecialization}
@@ -1002,7 +1065,7 @@ export const DoctorSettingsScreen: React.FC = () => {
                 <Text style={styles.formLabel}>Qualifications</Text>
                 <TextInput
                   style={styles.formInput}
-                  placeholder="e.g. MBBS, MD (Dermatology), FAM"
+                  placeholder="e.g. MBBS, MD - Dermatology"
                   placeholderTextColor={colors.textMuted}
                   value={docQualification}
                   onChangeText={setDocQualification}
@@ -1021,6 +1084,19 @@ export const DoctorSettingsScreen: React.FC = () => {
                 />
               </View>
 
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Doctor Bio & Approach</Text>
+                <TextInput
+                  style={[styles.formInput, styles.textArea]}
+                  placeholder="Describe your expertise, certifications, and clinical philosophy..."
+                  placeholderTextColor={colors.textMuted}
+                  value={docBio}
+                  onChangeText={setDocBio}
+                  multiline
+                  numberOfLines={3}
+                />
+              </View>
+
               <TouchableOpacity
                 activeOpacity={0.88}
                 onPress={handleSaveDoctor}
@@ -1031,99 +1107,8 @@ export const DoctorSettingsScreen: React.FC = () => {
                   <ActivityIndicator color={colors.textInverse} size="small" />
                 ) : (
                   <View style={styles.btnRow}>
-                    <Plus size={18} color={colors.textInverse} />
-                    <Text style={styles.savePrimaryBtnText}>Add Doctor</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-      {/* ── MODAL 5: Edit Doctor Details ── */}
-      <Modal
-        visible={isEditDoctorModalOpen}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setIsEditDoctorModalOpen(false)}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.modalBackdrop}
-        >
-          <View style={[styles.modalCard, shadows.card]}>
-            <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalTitle}>Edit Doctor Details</Text>
-                <Text style={styles.modalSubtitle}>Update practitioner info and qualifications</Text>
-              </View>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => setIsEditDoctorModalOpen(false)}
-                style={styles.modalCloseBtn}
-              >
-                <X size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.modalForm}>
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Doctor Full Name *</Text>
-                <TextInput
-                  style={styles.formInput}
-                  placeholder="e.g. Purva Pande"
-                  placeholderTextColor={colors.textMuted}
-                  value={editDocName}
-                  onChangeText={setEditDocName}
-                />
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Specialization *</Text>
-                <TextInput
-                  style={styles.formInput}
-                  placeholder="e.g. Aesthetic Cosmetologist & Trichologist"
-                  placeholderTextColor={colors.textMuted}
-                  value={editDocSpecialization}
-                  onChangeText={setEditDocSpecialization}
-                />
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Qualifications</Text>
-                <TextInput
-                  style={styles.formInput}
-                  placeholder="e.g. MBBS, MD (Dermatology)"
-                  placeholderTextColor={colors.textMuted}
-                  value={editDocQualification}
-                  onChangeText={setEditDocQualification}
-                />
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Years of Experience</Text>
-                <TextInput
-                  style={styles.formInput}
-                  placeholder="e.g. 7"
-                  placeholderTextColor={colors.textMuted}
-                  value={editDocExpYears}
-                  onChangeText={setEditDocExpYears}
-                  keyboardType="numeric"
-                />
-              </View>
-
-              <TouchableOpacity
-                activeOpacity={0.88}
-                onPress={handleSaveEditDoctor}
-                disabled={savingEditDoctor}
-                style={[styles.savePrimaryBtn, shadows.subtle]}
-              >
-                {savingEditDoctor ? (
-                  <ActivityIndicator color={colors.textInverse} size="small" />
-                ) : (
-                  <View style={styles.btnRow}>
                     <Check size={18} color={colors.textInverse} />
-                    <Text style={styles.savePrimaryBtnText}>Save Doctor Details</Text>
+                    <Text style={styles.savePrimaryBtnText}>Save Doctor Profile</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -1222,44 +1207,7 @@ export const DoctorSettingsScreen: React.FC = () => {
         </View>
       </Modal>
 
-      {/* ── MODAL 8: In-App Remove Doctor Confirmation ── */}
-      <Modal
-        visible={!!deleteConfirmDoc}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setDeleteConfirmDoc(null)}
-      >
-        <View style={styles.confirmBackdrop}>
-          <View style={[styles.confirmModalCard, shadows.card]}>
-            <View style={styles.confirmIconBadge}>
-              <Trash2 size={26} color="#DC2626" />
-            </View>
-            <Text style={styles.confirmModalTitle}>Remove Doctor</Text>
-            <Text style={styles.confirmModalSubtitle}>
-              Are you sure you want to remove{' '}
-              <Text style={{ fontWeight: 'bold' }}>{deleteConfirmDoc?.name}</Text> from your clinic
-              roster?
-            </Text>
 
-            <View style={styles.confirmBtnRow}>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => setDeleteConfirmDoc(null)}
-                style={styles.confirmCancelBtn}
-              >
-                <Text style={styles.confirmCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                activeOpacity={0.88}
-                onPress={handleConfirmRemoveDoctor}
-                style={styles.confirmDangerBtn}
-              >
-                <Text style={styles.confirmDangerText}>Remove Doctor</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 };
@@ -1748,6 +1696,188 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSizes.micro,
     color: colors.textSecondary,
     marginTop: 2,
+  },
+  docBioText: {
+    fontSize: typography.fontSizes.micro,
+    color: colors.textSecondary,
+    marginTop: 4,
+    lineHeight: 15,
+  },
+  slotDurationBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.background,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: borderRadius.md,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  slotDurationLabel: {
+    fontSize: typography.fontSizes.caption,
+    color: colors.textSecondary,
+    fontWeight: typography.fontWeights.medium,
+  },
+  slotDurationChip: {
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: borderRadius.pill,
+  },
+  slotDurationChipText: {
+    fontSize: typography.fontSizes.caption - 1,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.primaryDark,
+  },
+  scheduleDaysList: {
+    gap: 8,
+  },
+  dayHoursRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  closedBadge: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: borderRadius.pill,
+  },
+  closedBadgeText: {
+    fontSize: 11,
+    fontWeight: typography.fontWeights.bold,
+    color: '#DC2626',
+  },
+
+  // Schedule Modal Specific Styles
+  scheduleConfigSection: {
+    marginBottom: 16,
+  },
+  configSectionTitle: {
+    fontSize: typography.fontSizes.caption,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.text,
+    marginBottom: 8,
+  },
+  slotDurationRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  slotPickerChip: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: borderRadius.md,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+  },
+  slotPickerChipActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  slotPickerChipText: {
+    fontSize: typography.fontSizes.caption,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.textSecondary,
+  },
+  slotPickerChipTextActive: {
+    color: colors.primaryDark,
+    fontWeight: typography.fontWeights.bold,
+  },
+  quickPresetRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+    marginTop: 6,
+  },
+  applyPresetBtn: {
+    backgroundColor: colors.background,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: borderRadius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  applyPresetBtnText: {
+    fontSize: 11,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.primaryDark,
+  },
+  dayConfigCard: {
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.md,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  dayConfigHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dayConfigNameCol: {
+    flex: 1,
+  },
+  dayConfigName: {
+    fontSize: typography.fontSizes.body - 1,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.text,
+  },
+  dayStatusIndicator: {
+    fontSize: 11,
+    marginTop: 2,
+    fontWeight: typography.fontWeights.medium,
+  },
+  statusOpen: {
+    color: '#2E7D32',
+  },
+  statusClosed: {
+    color: '#DC2626',
+  },
+  timeSelectGrid: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: 8,
+  },
+  timeGroup: {
+    gap: 4,
+  },
+  timeGroupLabel: {
+    fontSize: 10,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+  },
+  timeScroll: {
+    gap: 6,
+    paddingVertical: 2,
+  },
+  miniTimeChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: borderRadius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  miniTimeChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  miniTimeChipText: {
+    fontSize: 11,
+    fontWeight: typography.fontWeights.medium,
+    color: colors.text,
+  },
+  miniTimeChipTextActive: {
+    color: colors.textInverse,
+    fontWeight: typography.fontWeights.bold,
   },
 
   // Modal Styles

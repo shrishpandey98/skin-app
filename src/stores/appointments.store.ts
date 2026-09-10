@@ -32,18 +32,18 @@ export const useAppointmentsStore = create<AppointmentsState>((set, get) => ({
       } as any;
     }
 
-    const doctor = payload.doctorId && clinic?.doctors
+    const doctor = (payload.doctorId && clinic?.doctors
       ? clinic.doctors.find((d) => d.id === payload.doctorId || d.slug === payload.doctorId)
-      : undefined;
+      : clinic?.doctors?.[0]) || undefined;
 
     const procedure = payload.procedureId
-      ? await procedureKnowledgeBaseService.getProcedureBySlug(payload.procedureId)
+      ? (await procedureKnowledgeBaseService.getProcedureBySlug(payload.procedureId)) || undefined
       : undefined;
 
     const newAppointment: Appointment = {
       id: 'apt_' + Date.now(),
       userId: 'usr_default',
-      clinicId: clinic.id,
+      clinicId: clinic?.id || 'clinic_default',
       doctorId: doctor?.id,
       procedureId: procedure?.id,
       appointmentDate: payload.appointmentDate,
@@ -55,9 +55,9 @@ export const useAppointmentsStore = create<AppointmentsState>((set, get) => ({
       notes: payload.notes,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      clinic,
-      doctor,
-      procedure,
+      clinic: clinic || undefined,
+      doctor: doctor || undefined,
+      procedure: procedure || undefined,
     };
 
     const updated = [newAppointment, ...get().appointments];
