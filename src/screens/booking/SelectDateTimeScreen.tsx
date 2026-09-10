@@ -85,6 +85,7 @@ export const SelectDateTimeScreen: React.FC = () => {
   const generateDatesList = (openingHours?: OpeningHours) => {
     const dates = [];
     const today = new Date();
+    const blockedSlots = openingHours?.blockedSlots || [];
 
     for (let i = 0; i < 14; i++) {
       const d = new Date(today);
@@ -98,7 +99,16 @@ export const SelectDateTimeScreen: React.FC = () => {
       const month = MONTH_NAMES[d.getMonth()];
 
       const dayConfig = (openingHours as any)?.[dayKey];
-      const isClosed = !dayConfig || dayConfig.isClosed || !dayConfig.open || dayConfig.open === 'Closed';
+      const isFullDayBlocked = blockedSlots.some(
+        (b) => b.dateStr === dateStr && b.isFullDay
+      );
+      const isClosed = !dayConfig || dayConfig.isClosed || !dayConfig.open || dayConfig.open === 'Closed' || isFullDayBlocked;
+
+      let openHours = dayConfig ? `${dayConfig.open} – ${dayConfig.close}` : 'Closed';
+      if (isFullDayBlocked) {
+        const blk = blockedSlots.find((b) => b.dateStr === dateStr && b.isFullDay);
+        openHours = blk?.reason ? `${blk.reason} (Off)` : 'Doctor Unavailable';
+      }
 
       dates.push({
         dateStr,
@@ -107,7 +117,7 @@ export const SelectDateTimeScreen: React.FC = () => {
         month,
         fullLabel: `${dayName}, ${dayNumber} ${month}`,
         isClosed,
-        openHours: dayConfig ? `${dayConfig.open} – ${dayConfig.close}` : 'Closed',
+        openHours,
       });
     }
     return dates;
@@ -115,6 +125,15 @@ export const SelectDateTimeScreen: React.FC = () => {
 
   const getSlotsForDate = (dateStr: string, openingHours?: OpeningHours) => {
     if (!dateStr || !openingHours) {
+      return { morning: [], afternoon: [], evening: [] };
+    }
+
+    // Check if full day is blocked for this date
+    const blockedSlots = openingHours.blockedSlots || [];
+    const isFullDayBlocked = blockedSlots.some(
+      (b) => b.dateStr === dateStr && b.isFullDay
+    );
+    if (isFullDayBlocked) {
       return { morning: [], afternoon: [], evening: [] };
     }
 
@@ -130,6 +149,26 @@ export const SelectDateTimeScreen: React.FC = () => {
     const endMins = parseTimeToMinutes(dayConfig.close) || 1140; // 07:00 PM default
     const slotDuration = openingHours.slotDurationMinutes || 45;
 
+    // Daily recurring break (e.g. Lunch 01:30 PM – 02:30 PM)
+    const dailyBreak = openingHours.dailyBreak;
+    const hasDailyBreak = !!(dailyBreak?.enabled && dailyBreak?.start && dailyBreak?.end);
+    const dailyBreakStartMins = hasDailyBreak ? parseTimeToMinutes(dailyBreak.start) : 0;
+    const dailyBreakEndMins = hasDailyBreak ? parseTimeToMinutes(dailyBreak.end) : 0;
+
+    // Day-specific break
+    const hasDayBreak = !!(dayConfig.hasBreak && dayConfig.breakStart && dayConfig.breakEnd);
+    const dayBreakStartMins = hasDayBreak ? parseTimeToMinutes(dayConfig.breakStart) : 0;
+    const dayBreakEndMins = hasDayBreak ? parseTimeToMinutes(dayConfig.breakEnd) : 0;
+
+    // Date-specific blocked intervals
+    const dateSpecificBlocks = blockedSlots
+      .filter((b) => b.dateStr === dateStr && !b.isFullDay && b.startTime && b.endTime)
+      .map((b) => ({
+        start: parseTimeToMinutes(b.startTime),
+        end: parseTimeToMinutes(b.endTime),
+        reason: b.reason,
+      }));
+
     const morning: string[] = [];
     const afternoon: string[] = [];
     const evening: string[] = [];
@@ -140,7 +179,28 @@ export const SelectDateTimeScreen: React.FC = () => {
     const currentMins = now.getHours() * 60 + now.getMinutes() + 15; // 15 min buffer
 
     for (let t = startMins; t + slotDuration <= endMins; t += slotDuration) {
+      const slotStart = t;
+      const slotEnd = t + slotDuration;
+
       if (isToday && t <= currentMins) {
+        continue;
+      }
+
+      // Check daily break collision
+      if (hasDailyBreak && slotStart < dailyBreakEndMins && slotEnd > dailyBreakStartMins) {
+        continue;
+      }
+
+      // Check day-specific break collision
+      if (hasDayBreak && slotStart < dayBreakEndMins && slotEnd > dayBreakStartMins) {
+        continue;
+      }
+
+      // Check date-specific blocked slots collision
+      const isBlocked = dateSpecificBlocks.some(
+        (b) => slotStart < b.end && slotEnd > b.start
+      );
+      if (isBlocked) {
         continue;
       }
 

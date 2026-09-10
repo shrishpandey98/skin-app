@@ -33,6 +33,7 @@ import {
   Trash2,
   Check,
   RefreshCw,
+  Coffee,
 } from 'lucide-react-native';
 import { useDoctorStore } from '../../stores/doctor.store';
 import { colors, borderRadius, typography, shadows } from '../../constants/theme';
@@ -93,6 +94,11 @@ export const DoctorSettingsScreen: React.FC = () => {
     friday: { open: '10:00 AM', close: '07:00 PM', isClosed: false },
     saturday: { open: '10:00 AM', close: '05:00 PM', isClosed: false },
     sunday: { open: 'Closed', close: 'Closed', isClosed: true },
+  });
+  const [dailyBreak, setDailyBreak] = useState<{ enabled: boolean; start: string; end: string }>({
+    enabled: false,
+    start: '01:30 PM',
+    end: '02:30 PM',
   });
   const [slotDuration, setSlotDuration] = useState<number>(45);
   const [savingHours, setSavingHours] = useState(false);
@@ -218,15 +224,26 @@ export const DoctorSettingsScreen: React.FC = () => {
     }
     setScheduleState(currentSched);
     setSlotDuration(hours.slotDurationMinutes || 45);
+    setDailyBreak(
+      hours.dailyBreak || {
+        enabled: false,
+        start: '01:30 PM',
+        end: '02:30 PM',
+      }
+    );
     setIsEditHoursModalOpen(true);
   };
 
   const handleSaveSchedule = async () => {
     setSavingHours(true);
     try {
+      const currentHours = activeClinic.openingHours || {};
       const updatedHours: any = {
+        ...currentHours,
         ...scheduleState,
         slotDurationMinutes: slotDuration,
+        dailyBreak,
+        blockedSlots: currentHours.blockedSlots || [],
       };
       await updateOperatingHours(updatedHours);
       setIsEditHoursModalOpen(false);
@@ -591,6 +608,17 @@ export const DoctorSettingsScreen: React.FC = () => {
             </View>
           </View>
 
+          {activeClinic.openingHours?.dailyBreak?.enabled ? (
+            <View style={[styles.slotDurationBadgeRow, { marginTop: 6 }]}>
+              <Text style={styles.slotDurationLabel}>Daily Lunch & Break:</Text>
+              <View style={[styles.slotDurationChip, { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' }]}>
+                <Text style={[styles.slotDurationChipText, { color: '#92400E' }]}>
+                  ☕ {activeClinic.openingHours.dailyBreak.start} – {activeClinic.openingHours.dailyBreak.end}
+                </Text>
+              </View>
+            </View>
+          ) : null}
+
           <View style={styles.scheduleDaysList}>
             {getDayRows().map((d, idx) => (
               <View key={idx} style={styles.dayRow}>
@@ -863,6 +891,83 @@ export const DoctorSettingsScreen: React.FC = () => {
                     </TouchableOpacity>
                   ))}
                 </View>
+              </View>
+
+              {/* Daily Recurring Break Section */}
+              <View style={styles.scheduleConfigSection}>
+                <View style={styles.breakSectionHeader}>
+                  <View style={styles.breakTitleCol}>
+                    <View style={styles.breakTitleRow}>
+                      <Coffee size={15} color={colors.primary} />
+                      <Text style={styles.configSectionTitle}>Daily Lunch & Break Window</Text>
+                    </View>
+                    <Text style={styles.breakSectionSubtitle}>
+                      Blocks slots automatically across all working days
+                    </Text>
+                  </View>
+                  <Switch
+                    value={dailyBreak.enabled}
+                    onValueChange={(val) => setDailyBreak((prev) => ({ ...prev, enabled: val }))}
+                    trackColor={{ false: colors.border, true: colors.primary }}
+                    thumbColor={Platform.OS === 'android' ? (dailyBreak.enabled ? colors.primaryDark : '#f4f3f4') : undefined}
+                  />
+                </View>
+
+                {dailyBreak.enabled ? (
+                  <View style={styles.breakTimeGrid}>
+                    <View style={styles.timeGroup}>
+                      <Text style={styles.timeGroupLabel}>Break Start</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timeScroll}>
+                        {['12:00 PM', '12:30 PM', '01:00 PM', '01:30 PM', '02:00 PM', '02:30 PM'].map((t) => (
+                          <TouchableOpacity
+                            key={t}
+                            activeOpacity={0.8}
+                            onPress={() => setDailyBreak((prev) => ({ ...prev, start: t }))}
+                            style={[
+                              styles.miniTimeChip,
+                              dailyBreak.start === t && styles.miniTimeChipActive,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.miniTimeChipText,
+                                dailyBreak.start === t && styles.miniTimeChipTextActive,
+                              ]}
+                            >
+                              {t}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+
+                    <View style={styles.timeGroup}>
+                      <Text style={styles.timeGroupLabel}>Break End</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timeScroll}>
+                        {['01:00 PM', '01:30 PM', '02:00 PM', '02:30 PM', '03:00 PM', '03:30 PM'].map((t) => (
+                          <TouchableOpacity
+                            key={t}
+                            activeOpacity={0.8}
+                            onPress={() => setDailyBreak((prev) => ({ ...prev, end: t }))}
+                            style={[
+                              styles.miniTimeChip,
+                              dailyBreak.end === t && styles.miniTimeChipActive,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.miniTimeChipText,
+                                dailyBreak.end === t && styles.miniTimeChipTextActive,
+                              ]}
+                            >
+                              {t}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  </View>
+                ) : null}
               </View>
 
               {/* Quick Preset Action */}
@@ -1785,6 +1890,34 @@ const styles = StyleSheet.create({
   slotPickerChipTextActive: {
     color: colors.primaryDark,
     fontWeight: typography.fontWeights.bold,
+  },
+  breakSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  breakTitleCol: {
+    flex: 1,
+    marginRight: 10,
+  },
+  breakTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  breakSectionSubtitle: {
+    fontSize: typography.fontSizes.micro + 0.5,
+    color: colors.textSecondary,
+    lineHeight: 15,
+  },
+  breakTimeGrid: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: 8,
   },
   quickPresetRow: {
     flexDirection: 'row',

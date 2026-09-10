@@ -7,6 +7,19 @@ export interface DayHours {
   open: string;
   close: string;
   isClosed?: boolean;
+  hasBreak?: boolean;
+  breakStart?: string; // e.g. "01:30 PM"
+  breakEnd?: string;   // e.g. "02:30 PM"
+}
+
+export interface BlockedTimeSlot {
+  id: string;
+  dateStr: string; // "YYYY-MM-DD"
+  startTime?: string; // "03:00 PM"
+  endTime?: string;   // "05:00 PM"
+  isFullDay?: boolean;
+  reason?: string;    // "Surgery / O.T.", "Emergency", "Break", "Personal", etc.
+  createdAt?: string;
 }
 
 export interface OpeningHours {
@@ -18,6 +31,12 @@ export interface OpeningHours {
   saturday?: DayHours;
   sunday?: DayHours;
   slotDurationMinutes?: number; // e.g. 15, 30, 45, 60
+  dailyBreak?: {
+    enabled: boolean;
+    start: string; // "01:30 PM"
+    end: string;   // "02:30 PM"
+  };
+  blockedSlots?: BlockedTimeSlot[];
   [key: string]: any;
 }
 
@@ -60,6 +79,7 @@ export interface Clinic {
   isActive: boolean;
   procedures?: ClinicProcedurePricing[];
   doctors?: Doctor[];
+  blockedSlots?: BlockedTimeSlot[];
   createdAt?: string;
   updatedAt?: string;
 }

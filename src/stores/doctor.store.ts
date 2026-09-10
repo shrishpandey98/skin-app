@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Appointment, AppointmentStatus } from '../types/appointment.types';
 import { Procedure } from '../types/procedure.types';
-import { ClinicProcedure, Clinic } from '../types/clinic.types';
+import { ClinicProcedure, Clinic, BlockedTimeSlot } from '../types/clinic.types';
 import { Doctor } from '../types/doctor.types';
 import { MOCK_CLINICS, MOCK_DOCTORS, MOCK_PROCEDURES } from '../data/mockData';
 import { procedureKnowledgeBaseService } from '../services/procedureKnowledgeBase.service';
@@ -61,6 +61,9 @@ interface DoctorState {
   updateClinicProfile: (updates: Partial<Clinic>) => Promise<void>;
   updateUserProfile: (updates: { name: string; email: string; phone?: string }) => Promise<void>;
   updateOperatingHours: (hours: Clinic['openingHours']) => Promise<void>;
+  addBlockedTimeSlot: (slot: Omit<BlockedTimeSlot, 'id' | 'createdAt'>) => Promise<BlockedTimeSlot>;
+  removeBlockedTimeSlot: (slotId: string) => Promise<void>;
+  updateDailyBreak: (dailyBreak: { enabled: boolean; start: string; end: string }) => Promise<void>;
   updateAppointmentStatus: (
     appointmentId: string,
     status: AppointmentStatus,
@@ -128,6 +131,8 @@ const DEFAULT_CLINIC: Clinic = {
     saturday: { open: '10:00 AM', close: '05:00 PM', isClosed: false },
     sunday: { open: '', close: '', isClosed: true },
     slotDurationMinutes: 45,
+    dailyBreak: { enabled: false, start: '01:30 PM', end: '02:30 PM' },
+    blockedSlots: [],
   },
   verificationStatus: 'verified',
   rating: 5.0,
@@ -750,6 +755,73 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
     await doctorService.updateClinicProfile(current.id, { openingHours: hours });
     await persistClinicData({
       activeClinic: updated,
+      doctorUser: get().doctorUser,
+    });
+  },
+
+  addBlockedTimeSlot: async (slot: Omit<BlockedTimeSlot, 'id' | 'createdAt'>) => {
+    const current = get().activeClinic;
+    const currentHours = current.openingHours || {};
+    const existingBlocked = currentHours.blockedSlots || [];
+    const newSlot: BlockedTimeSlot = {
+      ...slot,
+      id: 'blk_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      createdAt: new Date().toISOString(),
+    };
+    const updatedBlocked = [...existingBlocked, newSlot];
+    const updatedHours = {
+      ...currentHours,
+      blockedSlots: updatedBlocked,
+    };
+    const updatedClinic: Clinic = {
+      ...current,
+      openingHours: updatedHours,
+    };
+    set({ activeClinic: updatedClinic });
+    await doctorService.updateClinicProfile(current.id, { openingHours: updatedHours });
+    await persistClinicData({
+      activeClinic: updatedClinic,
+      doctorUser: get().doctorUser,
+    });
+    return newSlot;
+  },
+
+  removeBlockedTimeSlot: async (slotId: string) => {
+    const current = get().activeClinic;
+    const currentHours = current.openingHours || {};
+    const existingBlocked = currentHours.blockedSlots || [];
+    const updatedBlocked = existingBlocked.filter((b) => b.id !== slotId);
+    const updatedHours = {
+      ...currentHours,
+      blockedSlots: updatedBlocked,
+    };
+    const updatedClinic: Clinic = {
+      ...current,
+      openingHours: updatedHours,
+    };
+    set({ activeClinic: updatedClinic });
+    await doctorService.updateClinicProfile(current.id, { openingHours: updatedHours });
+    await persistClinicData({
+      activeClinic: updatedClinic,
+      doctorUser: get().doctorUser,
+    });
+  },
+
+  updateDailyBreak: async (dailyBreak: { enabled: boolean; start: string; end: string }) => {
+    const current = get().activeClinic;
+    const currentHours = current.openingHours || {};
+    const updatedHours = {
+      ...currentHours,
+      dailyBreak,
+    };
+    const updatedClinic: Clinic = {
+      ...current,
+      openingHours: updatedHours,
+    };
+    set({ activeClinic: updatedClinic });
+    await doctorService.updateClinicProfile(current.id, { openingHours: updatedHours });
+    await persistClinicData({
+      activeClinic: updatedClinic,
       doctorUser: get().doctorUser,
     });
   },
