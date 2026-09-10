@@ -27,6 +27,8 @@ export interface Procedure {
   relatedProcedureSlugs?: string[];
   addedByName?: string;
   addedByClinicId?: string;
+  addedByClinicName?: string;
+  clinicProfileId?: string;
   isGloballyEnabled?: boolean;
   createdAt?: string;
   updatedAt?: string;

@@ -19,6 +19,7 @@ import { ProcedureCard } from '../../components/cards/ProcedureCard';
 import { EmptyState } from '../../components/states/EmptyState';
 import { PROCEDURE_CATEGORIES } from '../../constants/categories';
 import { proceduresService } from '../../services/procedures.service';
+import { procedureKnowledgeBaseService } from '../../services/procedureKnowledgeBase.service';
 import { PROCEDURES_KNOWLEDGE_BASE } from '../../data/procedures.data';
 import { Procedure } from '../../types/procedure.types';
 import { colors, typography } from '../../constants/theme';
@@ -45,6 +46,22 @@ export const ProceduresScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [displayLimit, setDisplayLimit] = useState(20);
+
+  useEffect(() => {
+    const unsubscribe = procedureKnowledgeBaseService.subscribe((liveProcedures) => {
+      setAllProcedures(liveProcedures);
+      if (selectedCategory === 'all') {
+        setProcedures(liveProcedures);
+      } else {
+        setProcedures(
+          liveProcedures.filter(
+            (p) => (p.category || '').toLowerCase() === selectedCategory.toLowerCase()
+          )
+        );
+      }
+    });
+    return () => unsubscribe();
+  }, [selectedCategory]);
 
   useEffect(() => {
     if (route.params?.initialCategory) {

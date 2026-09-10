@@ -703,6 +703,8 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const clinicId = get().activeClinic.id;
+      // Ingest latest updates from live Google Sheets ("Main" + "New procedures")
+      await procedureKnowledgeBaseService.fetchLiveSheet(true);
       const kbProcedures = await doctorService.getKnowledgeBaseProcedures(clinicId);
       const clinicProcs =
         get().clinicProcedures.length > 0
@@ -830,3 +832,17 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
     set({ stats, patients });
   },
 }));
+
+// Reactive Google Sheet Auto-Ingestion listener for Doctor App
+procedureKnowledgeBaseService.subscribe((allProcs) => {
+  const state = useDoctorStore.getState();
+  if (state.activeClinic?.id) {
+    const filtered = allProcs.filter(
+      (p) => !p.addedByClinicId || p.addedByClinicId === state.activeClinic.id || p.isGloballyEnabled
+    );
+    useDoctorStore.setState({ knowledgeBaseProcedures: filtered });
+  } else {
+    useDoctorStore.setState({ knowledgeBaseProcedures: allProcs });
+  }
+});
+

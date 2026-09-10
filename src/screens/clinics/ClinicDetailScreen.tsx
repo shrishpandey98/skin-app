@@ -32,8 +32,7 @@ import { ReviewCard } from '../../components/cards/ReviewCard';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { LoadingState } from '../../components/states/LoadingState';
 import { clinicsService } from '../../services/clinics.service';
-import { proceduresService } from '../../services/procedures.service';
-import { Clinic } from '../../types/clinic.types';
+import { Clinic, ClinicProcedure } from '../../types/clinic.types';
 import { Doctor } from '../../types/doctor.types';
 import { Review } from '../../types/review.types';
 import { colors, borderRadius, typography, shadows } from '../../constants/theme';
@@ -264,14 +263,14 @@ export const ClinicDetailScreen: React.FC = () => {
                   const procTitle =
                     proc.procedures?.name ||
                     proc.procedure?.name ||
-                    proc.name ||
+                    (proc as any).name ||
                     proc.id
                       .replace(/^cp_[a-z0-9]+_/, '')
                       .replace(/^cp_/, '')
                       .replace(/^proc_/, '')
                       .replace(/_/g, ' ')
                       .replace(/-/g, ' ')
-                      .replace(/\b\w/g, (l) => l.toUpperCase());
+                      .replace(/\b\w/g, (l: string) => l.toUpperCase());
 
                   const procDesc =
                     proc.description ||

@@ -1,14 +1,16 @@
 import React, { useEffect } from 'react';
+import { Platform, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Calendar, Sparkles, Building2 } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DoctorAuthScreen } from '../screens/doctor/DoctorAuthScreen';
 import { DoctorScheduleScreen } from '../screens/doctor/DoctorScheduleScreen';
 import { DoctorAppointmentDetailScreen } from '../screens/doctor/DoctorAppointmentDetailScreen';
 import { DoctorProceduresScreen } from '../screens/doctor/DoctorProceduresScreen';
 import { DoctorSettingsScreen } from '../screens/doctor/DoctorSettingsScreen';
 import { useDoctorStore } from '../stores/doctor.store';
-import { colors, typography } from '../constants/theme';
+import { colors, typography, shadows } from '../constants/theme';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -36,27 +38,39 @@ const ClinicStack = () => (
 );
 
 const DoctorTabs: React.FC = () => {
+  const insets = useSafeAreaInsets();
+  const bottomPadding = Math.max(insets.bottom, Platform.OS === 'ios' ? 24 : 12);
+  const tabHeight = 56 + bottomPadding;
+
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 84 : 68,
-          paddingBottom: Platform.OS === 'ios' ? 24 : 10,
-          paddingTop: 6,
+          height: tabHeight,
+          paddingTop: 8,
+          paddingBottom: bottomPadding,
+          ...shadows.subtle,
         },
         tabBarItemStyle: {
-          paddingVertical: 2,
+          justifyContent: 'center',
+          alignItems: 'center',
+          paddingVertical: 0,
         },
         tabBarLabelStyle: {
-          fontSize: typography.fontSizes.micro + 0.5,
-          fontWeight: typography.fontWeights.semibold,
-          marginBottom: 2,
+          fontSize: 11,
+          fontWeight: '600',
+          marginTop: 4,
+          marginBottom: 0,
+          lineHeight: 14,
+        },
+        tabBarIconStyle: {
+          marginTop: 0,
         },
       }}
     >
@@ -65,7 +79,9 @@ const DoctorTabs: React.FC = () => {
         component={QueueStack}
         options={{
           tabBarLabel: 'Appointments',
-          tabBarIcon: ({ color, size }) => <Calendar size={20} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <Calendar size={22} color={color} strokeWidth={focused ? 2.3 : 1.8} />
+          ),
         }}
       />
       <Tab.Screen
@@ -73,7 +89,9 @@ const DoctorTabs: React.FC = () => {
         component={ProceduresStack}
         options={{
           tabBarLabel: 'Procedures',
-          tabBarIcon: ({ color, size }) => <Sparkles size={20} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <Sparkles size={22} color={color} strokeWidth={focused ? 2.3 : 1.8} />
+          ),
         }}
       />
       <Tab.Screen
@@ -81,7 +99,9 @@ const DoctorTabs: React.FC = () => {
         component={ClinicStack}
         options={{
           tabBarLabel: 'Clinic',
-          tabBarIcon: ({ color, size }) => <Building2 size={20} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <Building2 size={22} color={color} strokeWidth={focused ? 2.3 : 1.8} />
+          ),
         }}
       />
     </Tab.Navigator>

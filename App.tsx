@@ -9,6 +9,7 @@ import { useAuthStore } from './src/stores/auth.store';
 import { useAppointmentsStore } from './src/stores/appointments.store';
 import { useDoctorStore } from './src/stores/doctor.store';
 import { clinicsService } from './src/services/clinics.service';
+import { procedureKnowledgeBaseService } from './src/services/procedureKnowledgeBase.service';
 import { colors } from './src/constants/theme';
 
 const queryClient = new QueryClient({
@@ -47,6 +48,7 @@ export default function App() {
     }
     initializeAuth();
     initializeAppointments();
+    procedureKnowledgeBaseService.fetchLiveSheet(true);
     clinicsService.getAllClinics();
   }, []);
 

@@ -1,8 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MOCK_CLINICS, MOCK_DOCTORS, MOCK_REVIEWS } from '../data/mockData';
-import { Clinic } from '../types/clinic.types';
+import { Clinic, ClinicProcedure } from '../types/clinic.types';
 import { Doctor } from '../types/doctor.types';
 import { Review } from '../types/review.types';
+import { procedureKnowledgeBaseService } from './procedureKnowledgeBase.service';
+import { supabase } from './supabase';
 
 export interface ClinicFilters {
   area?: string | null;
@@ -17,8 +19,6 @@ const STORAGE_KEY_CLINIC_PROFILE = '@aura_clinic_custom_profile';
 const STORAGE_KEY_PUBLISHED = '@aura_clinic_published_state';
 const STORAGE_KEY_DOCTORS_LIST = '@aura_clinic_doctors_list';
 const STORAGE_KEY_CLINIC_PROCEDURES = '@aura_clinic_procedures_list';
-
-import { supabase } from './supabase';
 
 const DUMMY_CLINIC_IDS = new Set([
   '22222222-2222-2222-2222-222222222201',
@@ -36,11 +36,17 @@ const ALL_ACCOUNT_KEYS = [
   '@aura_clinic_registered_accounts',
 ];
 
-function deduplicateClinicProcedures(procs: any[]): any[] {
+function deduplicateClinicProcedures(procs: any[], clinicId?: string): any[] {
   const seen = new Set<string>();
   const unique: any[] = [];
   for (const p of procs || []) {
-    const key = (p.procedures?.slug || p.procedureId || p.id || '')
+    // Exclude procedures created by another clinic
+    const procOwnerClinic = p.procedures?.addedByClinicId || p.procedures?.clinicProfileId || p.addedByClinicId;
+    if (clinicId && procOwnerClinic && procOwnerClinic !== clinicId) {
+      continue;
+    }
+
+    const key = (p.procedures?.slug || p.procedure?.slug || p.procedureId || p.id || '')
       .toLowerCase()
       .replace(/^cp_/, '')
       .replace(/^proc_/, '')
@@ -50,6 +56,37 @@ function deduplicateClinicProcedures(procs: any[]): any[] {
     unique.push(p);
   }
   return unique;
+}
+
+function attachClinicSpecificProcedures(clinic: Clinic): Clinic {
+  const customProcs = procedureKnowledgeBaseService
+    .getSynchronousList()
+    .filter(
+      (p) =>
+        (p.addedByClinicId && (p.addedByClinicId === clinic.id || p.addedByClinicId === clinic.slug)) ||
+        (p.clinicProfileId && (p.clinicProfileId === clinic.id || p.clinicProfileId === clinic.slug))
+    );
+
+  const customClinicProcs = customProcs.map((cp) => ({
+    id: `cp_${cp.id}`,
+    clinicId: clinic.id,
+    procedureId: cp.id,
+    priceFrom: 3500,
+    priceUnit: cp.category === 'aesthetics' ? 'per unit / session' : 'per session',
+    isAvailable: true,
+    procedure: cp,
+    procedures: cp,
+  }));
+
+  const merged = deduplicateClinicProcedures(
+    [...(clinic.procedures || []), ...customClinicProcs],
+    clinic.id
+  );
+
+  return {
+    ...clinic,
+    procedures: merged,
+  };
 }
 
 async function syncPublishedClinicsFromStorage(): Promise<Clinic[]> {
@@ -192,7 +229,7 @@ async function syncPublishedClinicsFromStorage(): Promise<Clinic[]> {
       publishedClinicsMap.delete(slug);
     });
 
-    const allPublished = Array.from(publishedClinicsMap.values());
+    const allPublished = Array.from(publishedClinicsMap.values()).map(attachClinicSpecificProcedures);
 
     // Sync memory arrays so other parts of the app find doctors & clinics
     allPublished.forEach((clinic) => {
@@ -269,10 +306,13 @@ export const clinicsService = {
 
   getClinicBySlug: async (slug: string): Promise<Clinic | null> => {
     const clinics = await syncPublishedClinicsFromStorage();
-    const clinic = clinics.find((c) => c.slug === slug || c.id === slug);
+    let clinic = clinics.find((c) => c.slug === slug || c.id === slug);
+    if (!clinic) {
+      clinic = MOCK_CLINICS.find((c) => c.slug === slug || c.id === slug);
+    }
     if (!clinic) return null;
 
-    return clinic;
+    return attachClinicSpecificProcedures(clinic);
   },
 
   getDoctorsForClinic: async (clinicSlug: string): Promise<Doctor[]> => {

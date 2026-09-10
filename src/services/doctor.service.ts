@@ -198,6 +198,9 @@ class DoctorService {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '');
 
+    const clinic = MOCK_CLINICS.find((c) => c.id === clinicId || c.slug === clinicId);
+    const clinicName = clinic?.name || 'Aesthetic Clinic';
+
     const newProcedure: Procedure = {
       id: 'proc_custom_' + Date.now(),
       name: payload.name,
@@ -217,8 +220,10 @@ class DoctorService {
       sortOrder: 1,
       isActive: true,
       relatedProcedureSlugs: [],
-      addedByName: MOCK_CLINICS.find((c) => c.id === clinicId)?.name || "Aesthetic Clinic",
+      addedByName: clinicName,
+      addedByClinicName: clinicName,
       addedByClinicId: clinicId,
+      clinicProfileId: clinicId,
       isGloballyEnabled: false, // Only visible in this clinic until backend mapping/enabling
     };
 
@@ -232,15 +237,20 @@ class DoctorService {
       description: payload.shortDescription,
       isAvailable: true,
       procedures: newProcedure,
+      procedure: newProcedure,
     };
 
-    // Add to in-memory Knowledge Base and Clinic Offering
-    procedureKnowledgeBaseService.addCustomProcedure(newProcedure);
+    // Add to in-memory Knowledge Base (this also triggers the background sheet sync)
+    await procedureKnowledgeBaseService.addCustomProcedure(newProcedure);
     this.knowledgeBaseProcedures = procedureKnowledgeBaseService.getSynchronousList();
     this.clinicProcedures.unshift(newClinicProcedure);
 
-    // Also update MOCK_CLINICS so customer app instantly sees it
-    if (MOCK_CLINICS[0] && MOCK_CLINICS[0].procedures) {
+    // Update the specific clinic in MOCK_CLINICS so customer app instantly sees it
+    if (clinic) {
+      if (!clinic.procedures) clinic.procedures = [];
+      clinic.procedures.unshift(newClinicProcedure);
+    } else if (MOCK_CLINICS[0]) {
+      if (!MOCK_CLINICS[0].procedures) MOCK_CLINICS[0].procedures = [];
       MOCK_CLINICS[0].procedures.unshift(newClinicProcedure);
     }
     MOCK_PROCEDURES.unshift(newProcedure);
