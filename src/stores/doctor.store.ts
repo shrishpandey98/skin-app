@@ -602,7 +602,10 @@ export const useDoctorStore = create<DoctorState>((set, get) => ({
     set({ loading: true });
     try {
       const newDoc = await doctorService.addDoctorToClinic(get().activeClinic.id, payload);
-      const updatedDocs = [...get().clinicDoctors, newDoc];
+      const filtered = get().clinicDoctors.filter(
+        (d) => d.id !== newDoc.id && d.slug !== newDoc.slug && d.name.toLowerCase().trim() !== newDoc.name.toLowerCase().trim()
+      );
+      const updatedDocs = [...filtered, newDoc];
       set({
         clinicDoctors: updatedDocs,
         loading: false,

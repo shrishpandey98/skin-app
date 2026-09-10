@@ -14,7 +14,7 @@ import { Image } from 'expo-image';
 import { X, CheckCircle2, UserCheck, ChevronRight } from 'lucide-react-native';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { RatingBadge } from '../../components/ui/RatingBadge';
-import { clinicsService } from '../../services/clinics.service';
+import { clinicsService, deduplicateDoctors } from '../../services/clinics.service';
 import { Doctor } from '../../types/doctor.types';
 import { Clinic } from '../../types/clinic.types';
 import { colors, borderRadius, typography, shadows } from '../../constants/theme';
@@ -41,7 +41,7 @@ export const SelectDoctorScreen: React.FC = () => {
     if (c) {
       setClinic(c);
       const docs = await clinicsService.getDoctorsForClinic(c.slug);
-      setDoctors(docs);
+      setDoctors(deduplicateDoctors(docs));
     }
     setLoading(false);
   };

@@ -95,13 +95,32 @@ class DoctorService {
       proceduresOffered: [],
     };
 
+    const existingIdx = this.clinicDoctors.findIndex(
+      (d) => d.slug === slug || d.name.toLowerCase().trim() === formattedName.toLowerCase().trim()
+    );
+    if (existingIdx >= 0) {
+      this.clinicDoctors[existingIdx] = { ...this.clinicDoctors[existingIdx], ...newDoctor, id: this.clinicDoctors[existingIdx].id };
+      return this.clinicDoctors[existingIdx];
+    }
+
     this.clinicDoctors.push(newDoctor);
 
-    // Also push to MOCK_DOCTORS for customer app discovery
-    MOCK_DOCTORS.push(newDoctor);
+    // Also update MOCK_DOCTORS for customer app discovery
+    const mockIdx = MOCK_DOCTORS.findIndex((d) => d.slug === slug || d.name.toLowerCase().trim() === formattedName.toLowerCase().trim());
+    if (mockIdx >= 0) {
+      MOCK_DOCTORS[mockIdx] = newDoctor;
+    } else {
+      MOCK_DOCTORS.push(newDoctor);
+    }
+
     if (MOCK_CLINICS[0]) {
       if (!MOCK_CLINICS[0].doctors) MOCK_CLINICS[0].doctors = [];
-      MOCK_CLINICS[0].doctors.push(newDoctor);
+      const clinicDocIdx = MOCK_CLINICS[0].doctors.findIndex((d) => d.slug === slug || d.name.toLowerCase().trim() === formattedName.toLowerCase().trim());
+      if (clinicDocIdx >= 0) {
+        MOCK_CLINICS[0].doctors[clinicDocIdx] = newDoctor;
+      } else {
+        MOCK_CLINICS[0].doctors.push(newDoctor);
+      }
     }
 
     try {

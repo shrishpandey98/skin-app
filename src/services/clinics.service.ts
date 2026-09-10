@@ -58,6 +58,22 @@ function deduplicateClinicProcedures(procs: any[], clinicId?: string): any[] {
   return unique;
 }
 
+export function deduplicateDoctors(doctors: Doctor[]): Doctor[] {
+  const seen = new Set<string>();
+  const unique: Doctor[] = [];
+  for (const d of doctors || []) {
+    const key = (d.slug || d.id || d.name || '')
+      .toLowerCase()
+      .replace(/^doc_/, '')
+      .replace(/^dr[\s\.\-_]+/i, '')
+      .trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    unique.push(d);
+  }
+  return unique;
+}
+
 function attachClinicSpecificProcedures(clinic: Clinic): Clinic {
   const customProcs = procedureKnowledgeBaseService
     .getSynchronousList()
@@ -78,16 +94,17 @@ function attachClinicSpecificProcedures(clinic: Clinic): Clinic {
     procedures: cp,
   }));
 
-  const merged = deduplicateClinicProcedures(
+  const mergedProcs = deduplicateClinicProcedures(
     [...(clinic.procedures || []), ...customClinicProcs],
     clinic.id
   );
 
+  const mergedDoctors = deduplicateDoctors(clinic.doctors || []);
+
   return {
     ...clinic,
-    procedures: merged,
-  };
-}
+    procedures: mergedProcs,
+    doctors: mergedDoctors,
 
 async function syncPublishedClinicsFromStorage(): Promise<Clinic[]> {
   try {
@@ -179,7 +196,7 @@ async function syncPublishedClinicsFromStorage(): Promise<Clinic[]> {
                   name: clinic.name || 'Aesthetic Clinic',
                   slug: slug || `clinic-${Date.now()}`,
                   isActive: true,
-                  doctors: acc.clinicDoctors || clinic.doctors || [],
+                  doctors: deduplicateDoctors(acc.clinicDoctors || clinic.doctors || []),
                   procedures: deduplicateClinicProcedures(acc.clinicProcedures || clinic.procedures || []),
                 };
                 publishedClinicsMap.set(fullClinic.slug, fullClinic);
@@ -212,7 +229,7 @@ async function syncPublishedClinicsFromStorage(): Promise<Clinic[]> {
             const fullClinic: Clinic = {
               ...clinic,
               isActive: true,
-              doctors: doctors.length > 0 ? doctors : clinic.doctors || [],
+              doctors: deduplicateDoctors(doctors.length > 0 ? doctors : clinic.doctors || []),
               procedures: deduplicateClinicProcedures(procedures.length > 0 ? procedures : clinic.procedures || []),
               slug: slug || 'aura-clinic',
             };
@@ -318,7 +335,7 @@ export const clinicsService = {
   getDoctorsForClinic: async (clinicSlug: string): Promise<Doctor[]> => {
     const clinic = await clinicsService.getClinicBySlug(clinicSlug);
     if (!clinic) return [];
-    return clinic.doctors || [];
+    return deduplicateDoctors(clinic.doctors || []);
   },
 
   getReviewsForClinic: async (clinicId: string): Promise<Review[]> => {
